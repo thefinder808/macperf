@@ -30,6 +30,7 @@ struct LightTheme: AppTheme {
         case .network: return Color(red: 0.85, green: 0.47, blue: 0.02)   // #D97706
         case .gpu: return Color(red: 0.05, green: 0.58, blue: 0.53)       // #0D9488
         case .thermal: return Color(red: 0.86, green: 0.15, blue: 0.15)   // #DC2626
+        case .battery: return Color(red: 0.13, green: 0.59, blue: 0.25)   // #219B40
         case .processes: return Color(red: 0.42, green: 0.45, blue: 0.50) // #6B7280
         case .storage: return Color(red: 0.31, green: 0.30, blue: 0.76)   // #4F46E5
         }

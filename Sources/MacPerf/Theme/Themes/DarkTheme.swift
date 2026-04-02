@@ -30,6 +30,7 @@ struct DarkTheme: AppTheme {
         case .network: return Color(red: 0.90, green: 0.49, blue: 0.13)   // #E67E22
         case .gpu: return Color(red: 0.10, green: 0.74, blue: 0.61)       // #1ABC9C
         case .thermal: return Color(red: 0.91, green: 0.30, blue: 0.24)   // #E74C3C
+        case .battery: return Color(red: 0.20, green: 0.78, blue: 0.35)   // #34C759
         case .processes: return Color(red: 0.557, green: 0.557, blue: 0.576) // #8E8E93
         case .storage: return Color(red: 0.345, green: 0.337, blue: 0.839) // #5856D6
         }

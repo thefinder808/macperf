@@ -32,6 +32,7 @@ struct NeonTheme: AppTheme {
         case .network: return Color(red: 1.0, green: 0.4, blue: 0.0)      // #FF6600
         case .gpu: return Color(red: 0.0, green: 1.0, blue: 0.835)        // #00FFD5
         case .thermal: return Color(red: 1.0, green: 0.2, blue: 0.2)      // #FF3333
+        case .battery: return Color(red: 0.0, green: 1.0, blue: 0.4)      // #00FF66
         case .processes: return Color(red: 0.565, green: 0.565, blue: 1.0) // #9090FF
         case .storage: return Color(red: 0.5, green: 0.4, blue: 1.0)      // #8066FF
         }

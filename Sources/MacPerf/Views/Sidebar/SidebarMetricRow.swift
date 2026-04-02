@@ -54,6 +54,8 @@ struct SidebarMetricRow: View {
             return Formatters.formatPercentage(appState.gpuUsage, decimals: 0)
         case .thermal:
             return Formatters.formatTemperature(appState.thermalTemp)
+        case .battery:
+            return "\(Int(appState.batteryLevel))%"
         case .processes:
             return "—"
         case .storage:
@@ -69,6 +71,7 @@ struct SidebarMetricRow: View {
         case .network: return appState.networkDownSeries
         case .gpu: return appState.gpuSeries
         case .thermal: return appState.thermalSeries
+        case .battery: return appState.batterySeries
         default: return TimeSeries()
         }
     }

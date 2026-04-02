@@ -12,7 +12,7 @@ struct OverviewView: View {
     ]
 
     private var cardData: [(category: MetricCategory, valueText: String, series: TimeSeries)] {
-        [
+        var cards: [(MetricCategory, String, TimeSeries)] = [
             (.cpu, Formatters.formatPercentage(appState.cpuUsage, decimals: 0), appState.cpuSeries),
             (.memory, Formatters.formatPercentage(appState.memoryUsage, decimals: 0), appState.memorySeries),
             (.gpu, Formatters.formatPercentage(appState.gpuUsage, decimals: 0), appState.gpuSeries),
@@ -20,6 +20,10 @@ struct OverviewView: View {
             (.network, Formatters.formatBytesPerSec(appState.networkDownRate), appState.networkDownSeries),
             (.thermal, Formatters.formatTemperature(appState.thermalTemp), appState.thermalSeries),
         ]
+        if appState.hasBattery {
+            cards.append((.battery, "\(Int(appState.batteryLevel))%", appState.batterySeries))
+        }
+        return cards
     }
 
     var body: some View {
