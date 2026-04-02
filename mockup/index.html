@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacPerf - Smooth Motion Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #1a1a1e;
+    --sidebar-bg: #252528;
+    --card-bg: #252528;
+    --border: #3a3a3c;
+    --text-primary: #e5e5ea;
+    --text-secondary: #8e8e93;
+    --text-tertiary: #636366;
+    --hover-bg: #3a3a3c;
+    --cpu-color: #4A90D9;
+    --mem-color: #9B59B6;
+    --disk-color: #27AE60;
+    --net-color: #E67E22;
+    --gpu-color: #1ABC9C;
+    --thermal-color: #E74C3C;
+    --process-color: #8E8E93;
+    --storage-color: #5856D6;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #111;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .window {
+    width: 1100px;
+    height: 700px;
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+  }
+
+  /* Title bar */
+  .titlebar {
+    height: 38px;
+    background: #2a2a2e;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    -webkit-app-region: drag;
+    border-bottom: 1px solid #333;
+  }
+  .titlebar .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.red { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green { background: #28c840; }
+  .titlebar-text {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  /* Main layout */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 12px 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    padding: 16px 16px 6px;
+  }
+
+  .sidebar-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s ease-out;
+    gap: 10px;
+  }
+  .sidebar-row:hover {
+    background: rgba(255,255,255,0.04);
+  }
+  .sidebar-row.active {
+    background: rgba(255,255,255,0.06);
+  }
+  /* Animated selection indicator */
+  .sidebar-row.active::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    border-radius: 2px;
+    background: var(--accent);
+    animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes slideIn {
+    from { transform: translateY(-50%) scaleY(0); opacity: 0; }
+    to { transform: translateY(-50%) scaleY(1); opacity: 1; }
+  }
+
+  .sidebar-icon {
+    font-size: 14px;
+    width: 20px;
+    text-align: center;
+  }
+  .sidebar-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .sidebar-label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .sidebar-value {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: all 0.3s ease;
+  }
+  .sidebar-sparkline {
+    width: 56px;
+    height: 22px;
+  }
+
+  /* Detail pane */
+  .detail {
+    flex: 1;
+    padding: 28px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  /* Overview header */
+  .overview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .overview-header .icon {
+    font-size: 20px;
+    color: var(--cpu-color);
+  }
+  .overview-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .overview-header .cpu-model {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  /* Live pulse dot */
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #28c840;
+    animation: pulse 2s ease-in-out infinite;
+    margin-left: 8px;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  /* Mini graph cards grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .mini-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    opacity: 0;
+    animation: cardEntrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .mini-card:nth-child(1) { animation-delay: 0.0s; }
+  .mini-card:nth-child(2) { animation-delay: 0.05s; }
+  .mini-card:nth-child(3) { animation-delay: 0.1s; }
+  .mini-card:nth-child(4) { animation-delay: 0.15s; }
+  .mini-card:nth-child(5) { animation-delay: 0.2s; }
+  .mini-card:nth-child(6) { animation-delay: 0.25s; }
+
+  @keyframes cardEntrance {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .mini-card:hover {
+    border-color: var(--accent);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .mini-card:active {
+    transform: scale(0.97);
+  }
+
+  .mini-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .mini-card-icon { font-size: 12px; }
+  .mini-card-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  .mini-card-value {
+    margin-left: auto;
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .mini-card-graph {
+    height: 50px;
+    position: relative;
+  }
+  .mini-card .hover-hint {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-align: center;
+    margin-top: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .mini-card:hover .hover-hint {
+    opacity: 1;
+  }
+
+  /* System info footer */
+  .system-info {
+    display: flex;
+    gap: 24px;
+    padding-top: 8px;
+  }
+  .info-item label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+  .info-item span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* SVG sparklines */
+  svg.sparkline {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Animated sparkline */
+  .sparkline-line {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawLine 1.5s ease forwards;
+  }
+  @keyframes drawLine {
+    to { stroke-dashoffset: 0; }
+  }
+  .sparkline-area {
+    opacity: 0;
+    animation: fadeArea 0.8s ease 0.5s forwards;
+  }
+  @keyframes fadeArea {
+    to { opacity: 1; }
+  }
+
+  /* Value number animation */
+  .animated-value {
+    display: inline-block;
+    transition: all 0.3s ease;
+  }
+
+  /* Tooltip preview on graph */
+  .graph-tooltip {
+    position: absolute;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-family: 'SF Mono', monospace;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    pointer-events: none;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .graph-tooltip .tooltip-value {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .graph-tooltip .tooltip-time {
+    color: var(--text-tertiary);
+    font-size: 10px;
+  }
+
+  /* Scrub line */
+  .scrub-line {
+    position: absolute;
+    width: 1px;
+    top: 0;
+    bottom: 0;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Peak marker */
+  .peak-marker {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+
+  /* Detail view - CPU example with graph */
+  .detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .detail-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .detail-title {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .time-range-picker {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid var(--border);
+  }
+  .time-range-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .time-range-btn.active {
+    background: var(--accent);
+    color: white;
+  }
+  .detail-big-value {
+    font-size: 48px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', sans-serif;
+    transition: color 0.3s;
+  }
+
+  /* Performance graph container */
+  .perf-graph {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    height: 240px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: border-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .stat-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .stat-card-value {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: all 0.3s ease;
+  }
+  .stat-card-subtitle {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+  /* Progress bar at bottom of stat card */
+  .stat-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 0 1px 0 0;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Per-core bars */
+  .core-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .core-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 6px;
+  }
+  .core-bar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .core-bar-track {
+    width: 100%;
+    height: 48px;
+    background: var(--hover-bg);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+  .core-bar-wrapper:hover .core-bar-track {
+    transform: scaleX(1.1);
+  }
+  .core-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 4px;
+    transition: height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .core-bar-label-overlay {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: white;
+    bottom: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .core-bar-fill[data-high="true"] .core-bar-label-overlay {
+    opacity: 1;
+  }
+  .core-label {
+    font-size: 9px;
+    color: var(--text-tertiary);
+  }
+
+  /* Command palette overlay */
+  .cmd-palette-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: center;
+    padding-top: 80px;
+    z-index: 100;
+    animation: overlayFade 0.2s ease;
+  }
+  @keyframes overlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .cmd-palette {
+    width: 500px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    overflow: hidden;
+    height: fit-content;
+    animation: paletteEntrance 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes paletteEntrance {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .cmd-search {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmd-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .cmd-search input::placeholder { color: var(--text-tertiary); }
+  .cmd-search .search-icon { color: var(--text-tertiary); font-size: 14px; }
+  .cmd-results {
+    max-height: 350px;
+    overflow-y: auto;
+  }
+  .cmd-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .cmd-row:hover, .cmd-row.selected {
+    background: var(--hover-bg);
+  }
+  .cmd-row-icon { width: 24px; text-align: center; font-size: 14px; }
+  .cmd-row-info { flex: 1; }
+  .cmd-row-title { font-size: 13px; font-weight: 500; }
+  .cmd-row-subtitle { font-size: 11px; color: var(--text-tertiary); }
+  .cmd-row-shortcut {
+    font-size: 11px;
+    font-family: 'SF Mono', monospace;
+    color: var(--text-tertiary);
+    background: var(--hover-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* Pressure gauge */
+  .gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .gauge-needle {
+    transform-origin: 70px 60px;
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Tab indicator for showing which view we're on */
+  .view-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 0;
+  }
+  .view-tab {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+  .view-tab.active {
+    color: var(--text-primary);
+    background: var(--hover-bg);
+  }
+
+  /* Page transition */
+  .detail-content {
+    animation: pageIn 0.2s ease;
+  }
+  @keyframes pageIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="window" style="position: relative;">
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+    <div class="titlebar-text">MacPerf</div>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-row active" style="--accent: var(--cpu-color);">
+        <span class="sidebar-icon" style="color: var(--cpu-color);">&#9632;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Overview</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section-label">Hardware</div>
+
+      <div class="sidebar-row" style="--accent: var(--cpu-color);">
+        <span class="sidebar-icon" style="color: var(--cpu-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">CPU</span>
+          <span class="sidebar-value animated-value" style="color: var(--cpu-color);">23%</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-area" d="M0,18 L4,16 L8,17 L12,14 L16,15 L20,12 L24,13 L28,10 L32,11 L36,8 L40,9 L44,7 L48,6 L52,8 L56,5 L56,22 L0,22 Z" fill="url(#cpuGrad)" opacity="0.3"/>
+          <path class="sparkline-line" d="M0,18 L4,16 L8,17 L12,14 L16,15 L20,12 L24,13 L28,10 L32,11 L36,8 L40,9 L44,7 L48,6 L52,8 L56,5" fill="none" stroke="#4A90D9" stroke-width="1.5"/>
+          <defs><linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A90D9" stop-opacity="0.4"/><stop offset="100%" stop-color="#4A90D9" stop-opacity="0.05"/></linearGradient></defs>
+        </svg>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--mem-color);">
+        <span class="sidebar-icon" style="color: var(--mem-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Memory</span>
+          <span class="sidebar-value animated-value" style="color: var(--mem-color);">67%</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-area" d="M0,8 L4,7 L8,8 L12,7 L16,8 L20,7 L24,7 L28,8 L32,7 L36,7 L40,8 L44,7 L48,7 L52,8 L56,7 L56,22 L0,22 Z" fill="url(#memGrad)" opacity="0.3"/>
+          <path class="sparkline-line" d="M0,8 L4,7 L8,8 L12,7 L16,8 L20,7 L24,7 L28,8 L32,7 L36,7 L40,8 L44,7 L48,7 L52,8 L56,7" fill="none" stroke="#9B59B6" stroke-width="1.5"/>
+          <defs><linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9B59B6" stop-opacity="0.4"/><stop offset="100%" stop-color="#9B59B6" stop-opacity="0.05"/></linearGradient></defs>
+        </svg>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--disk-color);">
+        <span class="sidebar-icon" style="color: var(--disk-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Disk</span>
+          <span class="sidebar-value animated-value" style="color: var(--disk-color);">1.2 MB/s</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-line" d="M0,18 L4,14 L8,20 L12,10 L16,18 L20,6 L24,16 L28,12 L32,18 L36,8 L40,14 L44,10 L48,16 L52,12 L56,14" fill="none" stroke="#27AE60" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--net-color);">
+        <span class="sidebar-icon" style="color: var(--net-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Network</span>
+          <span class="sidebar-value animated-value" style="color: var(--net-color);">342 KB/s</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-line" d="M0,16 L4,12 L8,18 L12,8 L16,14 L20,10 L24,16 L28,6 L32,12 L36,14 L40,8 L44,16 L48,10 L52,12 L56,8" fill="none" stroke="#E67E22" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--gpu-color);">
+        <span class="sidebar-icon" style="color: var(--gpu-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">GPU</span>
+          <span class="sidebar-value animated-value" style="color: var(--gpu-color);">12%</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-line" d="M0,18 L4,17 L8,18 L12,16 L16,18 L20,17 L24,16 L28,18 L32,17 L36,16 L40,18 L44,16 L48,17 L52,18 L56,16" fill="none" stroke="#1ABC9C" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--thermal-color);">
+        <span class="sidebar-icon" style="color: var(--thermal-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Thermal</span>
+          <span class="sidebar-value animated-value" style="color: var(--thermal-color);">42&#176;C</span>
+        </div>
+        <svg class="sparkline sidebar-sparkline" viewBox="0 0 56 22">
+          <path class="sparkline-line" d="M0,14 L4,13 L8,14 L12,12 L16,13 L20,11 L24,12 L28,11 L32,12 L36,11 L40,12 L44,11 L48,12 L52,11 L56,12" fill="none" stroke="#E74C3C" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div class="sidebar-section-label">System</div>
+
+      <div class="sidebar-row" style="--accent: var(--process-color);">
+        <span class="sidebar-icon" style="color: var(--process-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Processes</span>
+          <span class="sidebar-value" style="color: var(--text-tertiary);">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="sidebar-row" style="--accent: var(--storage-color);">
+        <span class="sidebar-icon" style="color: var(--storage-color);">&#9641;</span>
+        <div class="sidebar-info">
+          <span class="sidebar-label">Storage</span>
+          <span class="sidebar-value" style="color: var(--text-tertiary);">&mdash;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail: Overview -->
+    <div class="detail" id="overviewPage" style="display:block;">
+      <div class="detail-content">
+        <div class="overview-header">
+          <span class="icon" style="color: var(--cpu-color); font-size: 20px;">&#9632;</span>
+          <h1>Overview</h1>
+          <div class="live-dot"></div>
+          <span class="cpu-model">Apple M2 Pro</span>
+        </div>
+
+        <div class="card-grid">
+          <!-- CPU card -->
+          <div class="mini-card" style="--accent: var(--cpu-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--cpu-color);">&#9641;</span>
+              <span class="mini-card-label">CPU</span>
+              <span class="mini-card-value" style="color: var(--cpu-color);">23%</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <defs>
+                  <linearGradient id="cpuAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#4A90D9" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#4A90D9" stop-opacity="0.05"/>
+                  </linearGradient>
+                </defs>
+                <path class="sparkline-area" d="M0,42 L13,38 L26,40 L40,34 L53,36 L66,30 L80,32 L93,26 L106,28 L120,22 L133,24 L146,18 L160,20 L173,22 L186,16 L200,18 L200,50 L0,50 Z" fill="url(#cpuAreaGrad)"/>
+                <path class="sparkline-line" d="M0,42 L13,38 L26,40 L40,34 L53,36 L66,30 L80,32 L93,26 L106,28 L120,22 L133,24 L146,18 L160,20 L173,22 L186,16 L200,18" fill="none" stroke="#4A90D9" stroke-width="2"/>
+                <!-- Peak marker diamond -->
+                <rect x="183" y="13" width="6" height="6" fill="#4A90D9" transform="rotate(45, 186, 16)" opacity="0.8"/>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+
+          <!-- Memory card -->
+          <div class="mini-card" style="--accent: var(--mem-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--mem-color);">&#9641;</span>
+              <span class="mini-card-label">Memory</span>
+              <span class="mini-card-value" style="color: var(--mem-color);">67%</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <defs>
+                  <linearGradient id="memAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#9B59B6" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#9B59B6" stop-opacity="0.05"/>
+                  </linearGradient>
+                </defs>
+                <path class="sparkline-area" d="M0,18 L13,16 L26,18 L40,16 L53,17 L66,15 L80,16 L93,17 L106,15 L120,16 L133,17 L146,15 L160,16 L173,17 L186,16 L200,15 L200,50 L0,50 Z" fill="url(#memAreaGrad)"/>
+                <path class="sparkline-line" d="M0,18 L13,16 L26,18 L40,16 L53,17 L66,15 L80,16 L93,17 L106,15 L120,16 L133,17 L146,15 L160,16 L173,17 L186,16 L200,15" fill="none" stroke="#9B59B6" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+
+          <!-- GPU card -->
+          <div class="mini-card" style="--accent: var(--gpu-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--gpu-color);">&#9641;</span>
+              <span class="mini-card-label">GPU</span>
+              <span class="mini-card-value" style="color: var(--gpu-color);">12%</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <path class="sparkline-area" d="M0,42 L13,40 L26,42 L40,38 L53,42 L66,40 L80,38 L93,42 L106,40 L120,38 L133,42 L146,38 L160,40 L173,42 L186,40 L200,38 L200,50 L0,50 Z" fill="url(#gpuGrad)" opacity="0.3"/>
+                <path class="sparkline-line" d="M0,42 L13,40 L26,42 L40,38 L53,42 L66,40 L80,38 L93,42 L106,40 L120,38 L133,42 L146,38 L160,40 L173,42 L186,40 L200,38" fill="none" stroke="#1ABC9C" stroke-width="2"/>
+                <defs><linearGradient id="gpuGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1ABC9C" stop-opacity="0.3"/><stop offset="100%" stop-color="#1ABC9C" stop-opacity="0.05"/></linearGradient></defs>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+
+          <!-- Disk card -->
+          <div class="mini-card" style="--accent: var(--disk-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--disk-color);">&#9641;</span>
+              <span class="mini-card-label">Disk</span>
+              <span class="mini-card-value" style="color: var(--disk-color);">1.2 MB/s</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <path class="sparkline-line" d="M0,40 L13,30 L26,44 L40,20 L53,38 L66,14 L80,36 L93,24 L106,40 L120,16 L133,30 L146,22 L160,36 L173,26 L186,32 L200,28" fill="none" stroke="#27AE60" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+
+          <!-- Network card -->
+          <div class="mini-card" style="--accent: var(--net-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--net-color);">&#9641;</span>
+              <span class="mini-card-label">Network</span>
+              <span class="mini-card-value" style="color: var(--net-color);">342 KB/s</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <path class="sparkline-line" d="M0,36 L13,26 L26,42 L40,18 L53,32 L66,22 L80,38 L93,12 L106,28 L120,30 L133,18 L146,36 L160,22 L173,28 L186,18 L200,24" fill="none" stroke="#E67E22" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+
+          <!-- Thermal card -->
+          <div class="mini-card" style="--accent: var(--thermal-color);">
+            <div class="mini-card-header">
+              <span class="mini-card-icon" style="color: var(--thermal-color);">&#9641;</span>
+              <span class="mini-card-label">Thermal</span>
+              <span class="mini-card-value" style="color: var(--thermal-color);">42&#176;C</span>
+            </div>
+            <div class="mini-card-graph">
+              <svg class="sparkline" viewBox="0 0 200 50">
+                <path class="sparkline-area" d="M0,30 L13,28 L26,30 L40,26 L53,28 L66,24 L80,26 L93,24 L106,26 L120,24 L133,26 L146,24 L160,26 L173,24 L186,26 L200,24 L200,50 L0,50 Z" fill="url(#thermalGrad)" opacity="0.3"/>
+                <path class="sparkline-line" d="M0,30 L13,28 L26,30 L40,26 L53,28 L66,24 L80,26 L93,24 L106,26 L120,24 L133,26 L146,24 L160,26 L173,24 L186,26 L200,24" fill="none" stroke="#E74C3C" stroke-width="2"/>
+                <defs><linearGradient id="thermalGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E74C3C" stop-opacity="0.3"/><stop offset="100%" stop-color="#E74C3C" stop-opacity="0.05"/></linearGradient></defs>
+              </svg>
+            </div>
+            <div class="hover-hint">View Details &rarr;</div>
+          </div>
+        </div>
+
+        <div class="system-info">
+          <div class="info-item"><label>Cores</label><span>12 (8P + 4E)</span></div>
+          <div class="info-item"><label>RAM</label><span>32 GB</span></div>
+          <div class="info-item"><label>OS</label><span>macOS 15.3</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail: CPU (toggled via JS) -->
+    <div class="detail" id="cpuPage" style="display:none;">
+      <div class="detail-content">
+        <div class="detail-header">
+          <div class="detail-icon-box" style="background: rgba(74,144,217,0.15);">
+            <span style="color: var(--cpu-color); font-size: 20px;">&#9641;</span>
+          </div>
+          <span class="detail-title">CPU</span>
+          <div class="time-range-picker">
+            <button class="time-range-btn active" style="--accent: var(--cpu-color); background: var(--cpu-color);">1m</button>
+            <button class="time-range-btn">5m</button>
+            <button class="time-range-btn">15m</button>
+            <button class="time-range-btn">1h</button>
+          </div>
+          <span class="detail-big-value" style="color: var(--cpu-color);">23.4%</span>
+        </div>
+
+        <!-- Graph with tooltip -->
+        <div class="perf-graph" id="cpuGraph">
+          <svg width="100%" height="100%" viewBox="0 0 780 200">
+            <defs>
+              <linearGradient id="cpuGraphGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4A90D9" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="#4A90D9" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid lines -->
+            <line x1="0" y1="50" x2="780" y2="50" stroke="#3a3a3c" stroke-width="0.5" opacity="0.5"/>
+            <line x1="0" y1="100" x2="780" y2="100" stroke="#3a3a3c" stroke-width="0.5" opacity="0.5"/>
+            <line x1="0" y1="150" x2="780" y2="150" stroke="#3a3a3c" stroke-width="0.5" opacity="0.5"/>
+            <!-- Y axis labels -->
+            <text x="4" y="54" fill="#636366" font-size="10" font-family="SF Mono, monospace">75%</text>
+            <text x="4" y="104" fill="#636366" font-size="10" font-family="SF Mono, monospace">50%</text>
+            <text x="4" y="154" fill="#636366" font-size="10" font-family="SF Mono, monospace">25%</text>
+            <!-- Area -->
+            <path d="M0,180 L30,175 L60,170 L90,168 L120,172 L150,165 L180,160 L210,155 L240,158 L270,150 L300,148 L330,152 L360,145 L390,140 L420,138 L450,142 L480,135 L510,130 L540,128 L570,132 L600,125 L630,128 L660,122 L690,120 L720,118 L750,115 L780,112 L780,200 L0,200 Z" fill="url(#cpuGraphGrad)"/>
+            <!-- Line -->
+            <path d="M0,180 L30,175 L60,170 L90,168 L120,172 L150,165 L180,160 L210,155 L240,158 L270,150 L300,148 L330,152 L360,145 L390,140 L420,138 L450,142 L480,135 L510,130 L540,128 L570,132 L600,125 L630,128 L660,122 L690,120 L720,118 L750,115 L780,112" fill="none" stroke="#4A90D9" stroke-width="2" stroke-linejoin="round"/>
+            <!-- Peak marker -->
+            <rect x="777" y="109" width="6" height="6" fill="#4A90D9" transform="rotate(45, 780, 112)"/>
+            <!-- Dashed peak reference line -->
+            <line x1="30" y1="112" x2="780" y2="112" stroke="#4A90D9" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.3"/>
+          </svg>
+          <!-- Tooltip (positioned as if hovering) -->
+          <div class="scrub-line" style="left: 520px; background: rgba(74,144,217,0.5);"></div>
+          <div class="graph-tooltip" style="left: 530px; top: 95px;">
+            <div class="tooltip-value" style="color: var(--cpu-color);">27.2%</div>
+            <div class="tooltip-time">30s ago</div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stat-grid">
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">User</div>
+            <div class="stat-card-value" style="color: var(--cpu-color);">15.2%</div>
+            <div class="stat-progress" style="width: 15.2%; background: var(--cpu-color);"></div>
+          </div>
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">System</div>
+            <div class="stat-card-value" style="color: var(--cpu-color);">8.2%</div>
+            <div class="stat-progress" style="width: 8.2%; background: var(--cpu-color);"></div>
+          </div>
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">Idle</div>
+            <div class="stat-card-value">76.6%</div>
+            <div class="stat-progress" style="width: 76.6%; background: var(--text-tertiary); opacity: 0.3;"></div>
+          </div>
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">Processor</div>
+            <div class="stat-card-value" style="font-size: 14px;">Apple M2 Pro</div>
+          </div>
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">Cores</div>
+            <div class="stat-card-value">12</div>
+            <div class="stat-card-subtitle">8 Performance + 4 Efficiency</div>
+          </div>
+          <div class="stat-card" style="--accent: var(--cpu-color);">
+            <div class="stat-card-title">Peak</div>
+            <div class="stat-card-value" style="color: var(--cpu-color);">47.2%</div>
+            <div class="stat-card-subtitle">Session maximum</div>
+          </div>
+        </div>
+
+        <!-- Per-core -->
+        <div class="core-section-title">Per Core Usage</div>
+        <div class="core-grid">
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 72%; background: rgba(74,144,217,0.82);">
+                <div class="core-bar-label-overlay">72%</div>
+              </div>
+            </div>
+            <span class="core-label">P0</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 45%; background: rgba(74,144,217,0.62);">
+                <div class="core-bar-label-overlay">45%</div>
+              </div>
+            </div>
+            <span class="core-label">P1</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 38%; background: rgba(74,144,217,0.57);">
+                <div class="core-bar-label-overlay">38%</div>
+              </div>
+            </div>
+            <span class="core-label">P2</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 55%; background: rgba(74,144,217,0.69);">
+                <div class="core-bar-label-overlay">55%</div>
+              </div>
+            </div>
+            <span class="core-label">P3</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 30%; background: rgba(74,144,217,0.51);">
+                <div class="core-bar-label-overlay" style="opacity:0;">30%</div>
+              </div>
+            </div>
+            <span class="core-label">P4</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="false" style="height: 22%; background: rgba(74,144,217,0.46);">
+              </div>
+            </div>
+            <span class="core-label">P5</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 60%; background: rgba(74,144,217,0.72);">
+                <div class="core-bar-label-overlay">60%</div>
+              </div>
+            </div>
+            <span class="core-label">P6</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="true" style="height: 40%; background: rgba(74,144,217,0.6);">
+                <div class="core-bar-label-overlay">40%</div>
+              </div>
+            </div>
+            <span class="core-label">P7</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="false" style="height: 15%; background: rgba(74,144,217,0.41);">
+              </div>
+            </div>
+            <span class="core-label">E0</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="false" style="height: 10%; background: rgba(74,144,217,0.37);">
+              </div>
+            </div>
+            <span class="core-label">E1</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="false" style="height: 18%; background: rgba(74,144,217,0.43);">
+              </div>
+            </div>
+            <span class="core-label">E2</span>
+          </div>
+          <div class="core-bar-wrapper">
+            <div class="core-bar-track">
+              <div class="core-bar-fill" data-high="false" style="height: 8%; background: rgba(74,144,217,0.36);">
+              </div>
+            </div>
+            <span class="core-label">E3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View toggle tabs at bottom -->
+  <div class="view-tabs" style="background: var(--sidebar-bg); border-top: 1px solid var(--border);">
+    <span class="view-tab active" onclick="showPage('overview')">Overview</span>
+    <span class="view-tab" onclick="showPage('cpu')">CPU Detail</span>
+  </div>
+</div>
+
+<script>
+function showPage(page) {
+  document.getElementById('overviewPage').style.display = page === 'overview' ? 'block' : 'none';
+  document.getElementById('cpuPage').style.display = page === 'cpu' ? 'block' : 'none';
+
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Update sidebar selection
+  const rows = document.querySelectorAll('.sidebar-row');
+  rows.forEach(r => r.classList.remove('active'));
+  if (page === 'overview') rows[0].classList.add('active');
+  if (page === 'cpu') rows[1].classList.add('active');
+
+  // Re-trigger entrance animations
+  const content = document.querySelector(`#${page}Page .detail-content`);
+  if (content) {
+    content.style.animation = 'none';
+    content.offsetHeight;
+    content.style.animation = 'pageIn 0.2s ease';
+  }
+
+  // Re-trigger card entrances for overview
+  if (page === 'overview') {
+    document.querySelectorAll('.mini-card').forEach(card => {
+      card.style.animation = 'none';
+      card.offsetHeight;
+      card.style.animation = '';
+    });
+  }
+}
+
+// Simulate live value updates
+setInterval(() => {
+  document.querySelectorAll('.sidebar-value.animated-value').forEach(el => {
+    const current = parseFloat(el.textContent);
+    if (!isNaN(current)) {
+      const delta = (Math.random() - 0.5) * 4;
+      const newVal = Math.max(0, Math.min(100, current + delta));
+      if (el.textContent.includes('%')) {
+        el.textContent = Math.round(newVal) + '%';
+      }
+    }
+  });
+}, 2000);
+</script>
+</body>
+</html>
