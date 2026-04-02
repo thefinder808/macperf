@@ -10,12 +10,18 @@ struct ContentView: View {
                 SidebarView()
                     .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
             } detail: {
-                detailView
-                    .id(appState.selectedCategory)
-                    .transition(.opacity.combined(with: .offset(y: 8)))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(themeManager.current.windowBackground)
-                    .animation(.easeInOut(duration: 0.2), value: appState.selectedCategory)
+                Group {
+                    if appState.showSettings {
+                        SettingsView()
+                    } else {
+                        detailView
+                            .id(appState.selectedCategory)
+                            .transition(.opacity.combined(with: .offset(y: 8)))
+                            .animation(.easeInOut(duration: 0.2), value: appState.selectedCategory)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(themeManager.current.windowBackground)
             }
             .navigationSplitViewStyle(.prominentDetail)
 
@@ -41,6 +47,9 @@ struct ContentView: View {
         .animation(.spring(response: 0.25, dampingFraction: 0.9), value: appState.showCommandPalette)
         .frame(minWidth: 900, minHeight: 550)
         .background(WindowAccessor())
+        .onChange(of: appState.selectedCategory) {
+            appState.showSettings = false
+        }
     }
 
     @ViewBuilder

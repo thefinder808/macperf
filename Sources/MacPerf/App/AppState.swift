@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
     @Published var showCommandPalette: Bool = false
     @Published var focusProcessSearch: Bool = false
     @Published var showExport: Bool = false
+    @Published var showSettings: Bool = false
 
     let systemInfo: SystemInfo
 

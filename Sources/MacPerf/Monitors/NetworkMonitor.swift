@@ -66,8 +66,8 @@ final class NetworkMonitor {
         let upRate: Double
 
         if elapsed > 0 && previousTimestamp != nil {
-            downRate = Double(totalDown - previousDownBytes) / elapsed
-            upRate = Double(totalUp - previousUpBytes) / elapsed
+            downRate = totalDown >= previousDownBytes ? Double(totalDown - previousDownBytes) / elapsed : 0
+            upRate = totalUp >= previousUpBytes ? Double(totalUp - previousUpBytes) / elapsed : 0
         } else {
             downRate = 0
             upRate = 0
