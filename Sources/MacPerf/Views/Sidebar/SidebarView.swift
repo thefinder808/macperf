@@ -27,5 +27,20 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("MacPerf")
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                appState.showSettings = true
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+                    .font(.system(size: 13))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(appState.showSettings ? themeManager.current.accent(for: .overview) : .secondary)
+            .background(appState.showSettings ? themeManager.current.cardBackground : .clear)
+        }
     }
 }

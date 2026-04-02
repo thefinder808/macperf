@@ -4,18 +4,21 @@ import SwiftUI
 struct MacPerfApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var settingsManager = SettingsManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(themeManager)
+                .environmentObject(settingsManager)
                 .background(themeManager.current.windowBackground)
                 .preferredColorScheme(colorScheme)
                 .sheet(isPresented: $appState.showExport) {
                     ExportSheet()
                         .environmentObject(appState)
                         .environmentObject(themeManager)
+                        .environmentObject(settingsManager)
                 }
         }
         .defaultSize(width: 1100, height: 700)
@@ -83,6 +86,7 @@ struct MacPerfApp: App {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(themeManager)
+                .environmentObject(settingsManager)
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "cpu")
@@ -91,12 +95,17 @@ struct MacPerfApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView()
+                .environmentObject(settingsManager)
+                .environmentObject(appState)
+                .environmentObject(themeManager)
+        }
     }
 
     private var menuBarLabel: String {
-        let cpu = Int(appState.cpuUsage)
-        let mem = Int(appState.memoryUsage)
-        return "\(cpu)% \(mem)%"
+        settingsManager.menuBarLabel(from: appState)
     }
 
     private var colorScheme: ColorScheme? {

@@ -66,8 +66,8 @@ final class ProcessMonitor {
         if let previous = previousCPUTimes[pid] {
             let elapsed = now.timeIntervalSince(previous.timestamp)
             if elapsed > 0 {
-                let userDelta = currentUserTime - previous.user
-                let systemDelta = currentSystemTime - previous.system
+                let userDelta = currentUserTime >= previous.user ? currentUserTime - previous.user : 0
+                let systemDelta = currentSystemTime >= previous.system ? currentSystemTime - previous.system : 0
                 // Convert from Mach absolute time (nanoseconds) to seconds
                 let totalDelta = Double(userDelta + systemDelta) / 1_000_000_000
                 cpuUsage = (totalDelta / elapsed) * 100

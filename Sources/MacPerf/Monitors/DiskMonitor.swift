@@ -64,10 +64,10 @@ final class DiskMonitor {
         let writeOpsRate: Double
 
         if elapsed > 0 && previousTimestamp != nil {
-            readRate = Double(totalRead - previousReadBytes) / elapsed
-            writeRate = Double(totalWrite - previousWriteBytes) / elapsed
-            readOpsRate = Double(totalReadOps - previousReadOps) / elapsed
-            writeOpsRate = Double(totalWriteOps - previousWriteOps) / elapsed
+            readRate = totalRead >= previousReadBytes ? Double(totalRead - previousReadBytes) / elapsed : 0
+            writeRate = totalWrite >= previousWriteBytes ? Double(totalWrite - previousWriteBytes) / elapsed : 0
+            readOpsRate = totalReadOps >= previousReadOps ? Double(totalReadOps - previousReadOps) / elapsed : 0
+            writeOpsRate = totalWriteOps >= previousWriteOps ? Double(totalWriteOps - previousWriteOps) / elapsed : 0
         } else {
             readRate = 0
             writeRate = 0
