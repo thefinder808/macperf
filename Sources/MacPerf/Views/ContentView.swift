@@ -12,7 +12,7 @@ struct ContentView: View {
             } detail: {
                 Group {
                     if appState.showSettings {
-                        settingsPlaceholder
+                        SettingsView()
                     } else {
                         detailView
                             .id(appState.selectedCategory)
@@ -49,20 +49,6 @@ struct ContentView: View {
         .background(WindowAccessor())
         .onChange(of: appState.selectedCategory) {
             appState.showSettings = false
-        }
-    }
-
-    private var settingsPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "gearshape")
-                .font(.system(size: 40))
-                .foregroundStyle(themeManager.current.tertiaryText)
-            Text("Settings")
-                .font(.title2.bold())
-                .foregroundStyle(themeManager.current.primaryText)
-            Text("Settings will be available after merging the toolbar-options branch.")
-                .font(.subheadline)
-                .foregroundStyle(themeManager.current.secondaryText)
         }
     }
 
