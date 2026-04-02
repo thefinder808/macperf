@@ -23,7 +23,6 @@ struct ProcessDetailView: View {
         VStack(spacing: 0) {
             // Fixed header
             VStack(alignment: .leading, spacing: 16) {
-                // Title row
                 HStack(spacing: 14) {
                     Image(systemName: "list.bullet.rectangle")
                         .font(.system(size: 24, weight: .semibold))
@@ -37,7 +36,6 @@ struct ProcessDetailView: View {
 
                     Spacer()
 
-                    // Tree/Flat toggle
                     Picker("View", selection: $showTree) {
                         Text("Flat").tag(false)
                         Text("Tree").tag(true)
@@ -53,7 +51,6 @@ struct ProcessDetailView: View {
                         .foregroundStyle(accent)
                 }
 
-                // Summary cards
                 LazyVGrid(columns: summaryColumns, spacing: 12) {
                     StatCard(title: "Total CPU", value: Formatters.formatPercentage(proc.totalCPU, decimals: 1), valueColor: theme.accent(for: .cpu))
                     StatCard(title: "Total Memory", value: Formatters.formatBytes(proc.totalMemory), valueColor: theme.accent(for: .memory))
@@ -61,7 +58,6 @@ struct ProcessDetailView: View {
                     StatCard(title: "Processes", value: Formatters.formatCount(proc.processCount))
                 }
 
-                // Search bar
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(theme.tertiaryText)
@@ -87,11 +83,9 @@ struct ProcessDetailView: View {
             .padding(.top, 28)
             .padding(.bottom, 12)
 
-            // Table + optional detail drawer
             HSplitView {
                 processTable(theme: theme)
 
-                // Detail drawer when a process is selected
                 if let selected = proc.selectedProcess {
                     processDrawer(theme: theme, process: selected)
                         .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
@@ -107,12 +101,13 @@ struct ProcessDetailView: View {
         let nodes = proc.treeNodes
 
         VStack(spacing: 0) {
-            // Header row
             HStack(spacing: 0) {
                 sortableHeader("Name", column: .name, width: nil, theme: theme)
                 sortableHeader("PID", column: .pid, width: 55, theme: theme)
                 sortableHeader("CPU %", column: .cpu, width: 80, theme: theme)
                 sortableHeader("Memory", column: .memory, width: 80, theme: theme)
+                sortableHeader("Disk I/O", column: .disk, width: 80, theme: theme)
+                sortableHeader("Conns", column: .connections, width: 55, theme: theme)
                 sortableHeader("Energy", column: .energy, width: 75, theme: theme)
                 sortableHeader("Threads", column: .threads, width: 65, theme: theme)
                 sortableHeader("State", column: .state, width: 75, theme: theme)
@@ -165,12 +160,9 @@ struct ProcessDetailView: View {
             // Name with tree indentation
             HStack(spacing: 4) {
                 if proc.showTree {
-                    // Indent
                     ForEach(0..<node.depth, id: \.self) { _ in
                         Color.clear.frame(width: 16)
                     }
-
-                    // Expand/collapse or leaf indicator
                     if node.hasChildren {
                         Button {
                             proc.toggleExpanded(process.pid)
@@ -214,6 +206,18 @@ struct ProcessDetailView: View {
                 .foregroundStyle(theme.primaryText)
                 .frame(width: 80, alignment: .leading)
 
+            // Disk I/O
+            Text(Formatters.formatBytesPerSec(process.diskReadBytesPerSec + process.diskWriteBytesPerSec))
+                .font(.system(size: 12).monospacedDigit())
+                .foregroundStyle(theme.accent(for: .disk))
+                .frame(width: 80, alignment: .leading)
+
+            // Connections
+            Text("\(process.connectionCount)")
+                .font(.system(size: 12).monospacedDigit())
+                .foregroundStyle(theme.accent(for: .network))
+                .frame(width: 55, alignment: .leading)
+
             // Energy
             HStack(spacing: 4) {
                 Text(process.energyImpact.rawValue)
@@ -243,12 +247,10 @@ struct ProcessDetailView: View {
             proc.selectedPid = (proc.selectedPid == process.pid) ? nil : process.pid
         }
         .contextMenu {
-            Button("Kill Process (SIGTERM)") {
-                proc.killProcess(process.pid)
+            Button("Sample Process") {
+                proc.sampleProcess(process.pid)
             }
-            Button("Force Kill (SIGKILL)") {
-                proc.forceKillProcess(process.pid)
-            }
+            .disabled(proc.isSampling)
             Divider()
             Button(proc.selectedPid == process.pid ? "Hide Details" : "Show Details") {
                 proc.selectedPid = (proc.selectedPid == process.pid) ? nil : process.pid
@@ -264,6 +266,7 @@ struct ProcessDetailView: View {
     @ViewBuilder
     private func processDrawer(theme: any AppTheme, process: ProcessEntry) -> some View {
         let history = proc.cpuHistory[process.pid] ?? []
+        let detail = proc.selectedDetail
 
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -298,42 +301,80 @@ struct ProcessDetailView: View {
                     }
                 }
 
-                // Info rows
                 Divider().foregroundStyle(theme.border)
 
+                // Info rows
                 infoRow(theme: theme, label: "PID", value: "\(process.pid)")
                 infoRow(theme: theme, label: "Parent PID", value: "\(process.parentPid)")
                 infoRow(theme: theme, label: "CPU", value: Formatters.formatPercentage(process.cpuUsage))
                 infoRow(theme: theme, label: "Memory", value: Formatters.formatBytes(process.memoryBytes))
+                infoRow(theme: theme, label: "Disk Read", value: Formatters.formatBytesPerSec(process.diskReadBytesPerSec))
+                infoRow(theme: theme, label: "Disk Write", value: Formatters.formatBytesPerSec(process.diskWriteBytesPerSec))
                 infoRow(theme: theme, label: "Threads", value: "\(process.threadCount)")
                 infoRow(theme: theme, label: "State", value: process.state.rawValue)
                 infoRow(theme: theme, label: "Energy", value: process.energyImpact.rawValue)
 
+                if let detail {
+                    infoRow(theme: theme, label: "Open Files", value: "\(detail.openFiles)")
+                    infoRow(theme: theme, label: "Connections", value: "\(detail.connections)")
+                }
+
                 Divider().foregroundStyle(theme.border)
 
-                // Launch path
-                launchPathSection(theme: theme, pid: process.pid)
+                // Command path
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PATH")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(theme.tertiaryText)
+                        .tracking(0.5)
+
+                    Text(process.commandArgs.isEmpty ? "Unknown" : process.commandArgs)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(theme.secondaryText)
+                        .lineLimit(3)
+                        .textSelection(.enabled)
+                }
 
                 Divider().foregroundStyle(theme.border)
 
-                // Actions
-                VStack(spacing: 8) {
-                    Button {
-                        proc.killProcess(process.pid)
-                    } label: {
-                        Label("Kill Process", systemImage: "xmark.octagon")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                // Sample action
+                Button {
+                    proc.sampleProcess(process.pid)
+                } label: {
+                    Label(proc.isSampling ? "Sampling..." : "Sample Process", systemImage: "waveform.badge.magnifyingglass")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(proc.isSampling)
 
-                    Button {
-                        proc.forceKillProcess(process.pid)
-                    } label: {
-                        Label("Force Kill", systemImage: "xmark.octagon.fill")
-                            .frame(maxWidth: .infinity)
+                // Sample output
+                if let output = proc.sampleOutput {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("SAMPLE OUTPUT")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(theme.tertiaryText)
+                                .tracking(0.5)
+                            Spacer()
+                            Button("Copy") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(output, forType: .string)
+                            }
+                            .font(.system(size: 10))
+                            .buttonStyle(.borderless)
+                        }
+
+                        ScrollView(.vertical) {
+                            Text(output)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(theme.secondaryText)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 200)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(theme.graphBackground))
+                        .padding(4)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
                 }
             }
             .padding(16)
@@ -357,32 +398,7 @@ struct ProcessDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private func launchPathSection(theme: any AppTheme, pid: Int32) -> some View {
-        let path = getProcessPath(pid: pid)
-
-        VStack(alignment: .leading, spacing: 4) {
-            Text("PATH")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(theme.tertiaryText)
-                .tracking(0.5)
-
-            Text(path)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(theme.secondaryText)
-                .lineLimit(3)
-                .textSelection(.enabled)
-        }
-    }
-
     // MARK: - Helpers
-
-    private func getProcessPath(pid: Int32) -> String {
-        var pathBuffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
-        proc_pidpath(pid, &pathBuffer, UInt32(MAXPATHLEN))
-        let path = String(cString: pathBuffer)
-        return path.isEmpty ? "Unknown" : path
-    }
 
     private func drawSparkline(context: GraphicsContext, size: CGSize, points: [Double], color: Color) {
         guard points.count >= 2 else { return }
@@ -398,7 +414,6 @@ struct ProcessDetailView: View {
         }
         context.stroke(path, with: .color(color), lineWidth: 1.5)
 
-        // Fill
         var fillPath = path
         fillPath.addLine(to: CGPoint(x: size.width, y: size.height))
         fillPath.addLine(to: CGPoint(x: 0, y: size.height))

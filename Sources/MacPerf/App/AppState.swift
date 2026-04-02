@@ -19,6 +19,7 @@ final class AppState: ObservableObject {
     let gpuVM = GPUViewModel()
     let thermalVM = ThermalViewModel()
     let storageVM = StorageViewModel()
+    let batteryVM = BatteryViewModel()
     let processVM = ProcessViewModel()
 
     // Services
@@ -37,6 +38,9 @@ final class AppState: ObservableObject {
     var gpuSeries: TimeSeries { gpuVM.deviceUtilSeries }
     var thermalTemp: Double { thermalVM.cpuTemperature }
     var thermalSeries: TimeSeries { thermalVM.cpuTempSeries }
+    var batteryLevel: Double { batteryVM.currentPercent }
+    var batterySeries: TimeSeries { batteryVM.chargeSeries }
+    var hasBattery: Bool { batteryVM.isPresent }
 
     private var timerSubscription: AnyCancellable?
     private var vmSubscriptions: Set<AnyCancellable> = []
@@ -46,7 +50,7 @@ final class AppState: ObservableObject {
         self.systemInfo = SystemInfo.fetch()
 
         // Forward child VM changes to trigger our own objectWillChange
-        let vms: [any ObservableObject] = [cpuVM, memoryVM, diskVM, networkVM, gpuVM, thermalVM, storageVM, processVM]
+        let vms: [any ObservableObject] = [cpuVM, memoryVM, diskVM, networkVM, gpuVM, thermalVM, storageVM, batteryVM, processVM]
         for vm in vms {
             (vm.objectWillChange as? ObservableObjectPublisher)?.sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -83,6 +87,7 @@ final class AppState: ObservableObject {
         if tick % 5 == 0 || tick <= 1 {
             thermalVM.update()
             storageVM.update()
+            batteryVM.update()
         }
 
         // Alert checks — every 5 ticks

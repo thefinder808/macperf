@@ -6,8 +6,9 @@ enum ProcessSortColumn: String, CaseIterable {
     case pid = "PID"
     case cpu = "CPU %"
     case memory = "Memory"
-    case gpu = "GPU %"
     case energy = "Energy"
+    case disk = "Disk I/O"
+    case connections = "Conns"
     case threads = "Threads"
     case state = "State"
 }
@@ -35,6 +36,13 @@ final class ProcessViewModel: ObservableObject {
     // Per-process CPU sparkline history (keeps last 60 values)
     var cpuHistory: [Int32: [Double]] = [:]
 
+    // On-demand detail for selected process
+    @Published var selectedDetail: (openFiles: Int, connections: Int)? = nil
+
+    // Sample profiling
+    @Published var sampleOutput: String? = nil
+    @Published var isSampling: Bool = false
+
     var filteredProcesses: [ProcessEntry] {
         var result = processes
         if !searchText.isEmpty {
@@ -47,13 +55,11 @@ final class ProcessViewModel: ObservableObject {
 
     var treeNodes: [ProcessTreeNode] {
         guard showTree && searchText.isEmpty else {
-            // Flat mode or searching — no tree
             return filteredProcesses.map {
                 ProcessTreeNode(id: $0.pid, process: $0, depth: 0, hasChildren: false, isExpanded: false)
             }
         }
 
-        // Build parent → children map
         let pidSet = Set(processes.map(\.pid))
         var childrenMap: [Int32: [ProcessEntry]] = [:]
         var roots: [ProcessEntry] = []
@@ -66,13 +72,11 @@ final class ProcessViewModel: ObservableObject {
             }
         }
 
-        // Sort roots and children
         roots.sort(by: sortComparator)
         for key in childrenMap.keys {
             childrenMap[key]?.sort(by: sortComparator)
         }
 
-        // Flatten into display nodes
         var nodes: [ProcessTreeNode] = []
         func flatten(_ entries: [ProcessEntry], depth: Int) {
             for entry in entries {
@@ -109,7 +113,6 @@ final class ProcessViewModel: ObservableObject {
     func update() {
         processes = monitor.sample()
 
-        // Update per-process CPU sparkline history
         for proc in processes {
             var history = cpuHistory[proc.pid] ?? []
             history.append(proc.cpuUsage)
@@ -117,9 +120,16 @@ final class ProcessViewModel: ObservableObject {
             cpuHistory[proc.pid] = history
         }
 
-        // Clean stale history
         let activePids = Set(processes.map(\.pid))
         cpuHistory = cpuHistory.filter { activePids.contains($0.key) }
+
+        // Refresh FD detail for selected process
+        if let pid = selectedPid {
+            let detail = monitor.readFileDescriptors(pid: pid)
+            selectedDetail = detail
+        } else {
+            selectedDetail = nil
+        }
     }
 
     func toggleSort(_ column: ProcessSortColumn) {
@@ -139,6 +149,42 @@ final class ProcessViewModel: ObservableObject {
         }
     }
 
+    func sampleProcess(_ pid: Int32) {
+        guard !isSampling else { return }
+        isSampling = true
+        sampleOutput = nil
+
+        Task.detached { [weak self] in
+            let process = Process()
+            let pipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/sample")
+            process.arguments = ["\(pid)", "3"]
+            process.standardOutput = pipe
+            process.standardError = pipe
+
+            var output = ""
+            do {
+                try process.run()
+                process.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                output = String(data: data, encoding: .utf8) ?? "No output"
+            } catch {
+                output = "Failed to sample: \(error.localizedDescription)"
+            }
+
+            // Cap output length
+            if output.count > 10000 {
+                output = String(output.prefix(10000)) + "\n... (truncated)"
+            }
+
+            let finalOutput = output
+            await MainActor.run { [weak self] in
+                self?.sampleOutput = finalOutput
+                self?.isSampling = false
+            }
+        }
+    }
+
     func killProcess(_ pid: Int32) {
         kill(pid, SIGTERM)
     }
@@ -155,8 +201,9 @@ final class ProcessViewModel: ObservableObject {
             case .pid: comparison = a.pid < b.pid
             case .cpu: comparison = a.cpuUsage < b.cpuUsage
             case .memory: comparison = a.memoryBytes < b.memoryBytes
-            case .gpu: comparison = a.gpuUsage < b.gpuUsage
             case .energy: comparison = a.energyImpact < b.energyImpact
+            case .disk: comparison = (a.diskReadBytesPerSec + a.diskWriteBytesPerSec) < (b.diskReadBytesPerSec + b.diskWriteBytesPerSec)
+            case .connections: comparison = a.connectionCount < b.connectionCount
             case .threads: comparison = a.threadCount < b.threadCount
             case .state: comparison = a.state.rawValue < b.state.rawValue
             }

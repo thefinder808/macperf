@@ -12,7 +12,7 @@ struct SidebarView: View {
             }
 
             Section("Hardware") {
-                ForEach(MetricCategory.hardwareCategories) { category in
+                ForEach(MetricCategory.hardwareCategories.filter { $0 != .battery || appState.hasBattery }) { category in
                     SidebarMetricRow(category: category)
                         .tag(category)
                 }

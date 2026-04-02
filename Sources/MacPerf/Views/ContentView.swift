@@ -69,6 +69,8 @@ struct ContentView: View {
             GPUDetailView()
         case .thermal:
             ThermalDetailView()
+        case .battery:
+            BatteryDetailView()
         case .processes:
             ProcessDetailView()
         case .storage:

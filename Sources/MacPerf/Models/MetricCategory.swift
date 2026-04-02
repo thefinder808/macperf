@@ -8,6 +8,7 @@ enum MetricCategory: String, CaseIterable, Identifiable, Hashable {
     case network = "Network"
     case gpu = "GPU"
     case thermal = "Thermal"
+    case battery = "Battery"
     case processes = "Processes"
     case storage = "Storage"
 
@@ -22,6 +23,7 @@ enum MetricCategory: String, CaseIterable, Identifiable, Hashable {
         case .network: return "network"
         case .gpu: return "gpu"
         case .thermal: return "thermometer.medium"
+        case .battery: return "battery.100percent"
         case .processes: return "list.bullet.rectangle"
         case .storage: return "externaldrive"
         }
@@ -36,7 +38,7 @@ enum MetricCategory: String, CaseIterable, Identifiable, Hashable {
 
     /// Categories that appear in the sidebar's hardware section
     static var hardwareCategories: [MetricCategory] {
-        [.cpu, .memory, .disk, .network, .gpu, .thermal]
+        [.cpu, .memory, .disk, .network, .gpu, .thermal, .battery]
     }
 
     /// Categories that appear in the sidebar's system section

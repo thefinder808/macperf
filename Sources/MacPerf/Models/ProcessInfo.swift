@@ -13,6 +13,9 @@ struct ProcessEntry: Identifiable {
     var diskWriteBytesPerSec: Double
     var threadCount: Int32
     var state: ProcessState
+    var connectionCount: Int
+    var openFileCount: Int
+    var commandArgs: String
 
     enum ProcessState: String {
         case running = "Running"
