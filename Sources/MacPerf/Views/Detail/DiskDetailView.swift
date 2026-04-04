@@ -49,7 +49,7 @@ struct DiskDetailView: View {
                     StatCard(title: "Total Written", value: Formatters.formatBytes(disk.totalBytesWritten))
                 }
             }
-            .padding(28)
+            .padding(32)
         }
     }
 

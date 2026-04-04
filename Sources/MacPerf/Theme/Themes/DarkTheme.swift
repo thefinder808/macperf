@@ -23,16 +23,16 @@ struct DarkTheme: AppTheme {
 
     func accent(for category: MetricCategory) -> Color {
         switch category {
-        case .overview: return Color(red: 0.29, green: 0.56, blue: 0.85)
-        case .cpu: return Color(red: 0.29, green: 0.56, blue: 0.85)       // #4A90D9
-        case .memory: return Color(red: 0.61, green: 0.35, blue: 0.71)    // #9B59B6
-        case .disk: return Color(red: 0.15, green: 0.68, blue: 0.38)      // #27AE60
-        case .network: return Color(red: 0.90, green: 0.49, blue: 0.13)   // #E67E22
-        case .gpu: return Color(red: 0.10, green: 0.74, blue: 0.61)       // #1ABC9C
-        case .thermal: return Color(red: 0.91, green: 0.30, blue: 0.24)   // #E74C3C
-        case .battery: return Color(red: 0.20, green: 0.78, blue: 0.35)   // #34C759
-        case .processes: return Color(red: 0.557, green: 0.557, blue: 0.576) // #8E8E93
-        case .storage: return Color(red: 0.345, green: 0.337, blue: 0.839) // #5856D6
+        case .overview: return Color(hex: 0x0A84FF)
+        case .cpu: return Color(hex: 0x0A84FF)       // Apple Blue (dark)
+        case .memory: return Color(hex: 0xBF5AF2)     // Apple Purple (dark)
+        case .disk: return Color(hex: 0x30D158)       // Apple Green (dark)
+        case .network: return Color(hex: 0xFF9F0A)     // Apple Orange (dark)
+        case .gpu: return Color(hex: 0x64D2FF)         // Apple Teal (dark)
+        case .thermal: return Color(hex: 0xFF453A)     // Apple Red (dark)
+        case .battery: return Color(hex: 0x30D158)     // Apple Green (dark)
+        case .processes: return Color(hex: 0x98989D)   // Apple Gray (dark)
+        case .storage: return Color(hex: 0x5E5CE6)     // Apple Indigo (dark)
         }
     }
 }

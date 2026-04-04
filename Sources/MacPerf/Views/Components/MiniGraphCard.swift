@@ -20,32 +20,33 @@ struct MiniGraphCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: category.systemImage)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(accent)
                     Text(category.rawValue)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(theme.secondaryText)
                     Spacer()
                     Text(valueText)
-                        .font(.system(size: 18, weight: .bold).monospacedDigit())
+                        .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
                         .foregroundStyle(accent)
                         .contentTransition(.numericText())
                         .animation(.easeInOut(duration: 0.3), value: valueText)
                 }
 
                 MiniSparkline(series: series, color: accent, pointCount: 60)
-                    .frame(height: 50)
+                    .frame(height: 64)
             }
-            .padding(14)
+            .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(theme.cardBackground)
+                    .shadow(color: theme.cardShadow ? .black.opacity(0.06) : .clear, radius: 3, y: 1)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isHovered ? accent.opacity(0.4) : theme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isHovered ? accent.opacity(0.4) : (theme.cardShadow ? .clear : theme.border), lineWidth: 1)
             )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .shadow(color: isHovered && theme.cardShadow ? .black.opacity(0.08) : .clear, radius: 8, y: 4)
             .animation(.spring(response: 0.2), value: isPressed)
             .animation(.easeOut(duration: 0.2), value: isHovered)
         }

@@ -41,6 +41,7 @@ struct ProcessDetailView: View {
                         Text("Tree").tag(true)
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                     .frame(width: 120)
                     .onChange(of: showTree) { _, newValue in
                         proc.showTree = newValue

@@ -28,7 +28,7 @@ struct SidebarMetricRow: View {
                         series: seriesForCategory,
                         color: themeManager.current.accent(for: category)
                     )
-                    .frame(width: 56, height: 22)
+                    .frame(width: 72, height: 28)
                 }
             }
         } icon: {

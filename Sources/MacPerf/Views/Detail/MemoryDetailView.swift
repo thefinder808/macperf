@@ -14,27 +14,28 @@ struct MemoryDetailView: View {
         let theme = themeManager.current
         let accent = theme.accent(for: .memory)
         let mem = appState.memoryVM
+        let usagePercent = mem.totalBytes > 0 ? Double(mem.usedBytes) / Double(mem.totalBytes) * 100 : 0
 
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header
+                // Header — shows usage %
                 MetricHeader(
                     category: .memory,
-                    value: Formatters.formatPercentage(mem.pressurePercent, decimals: 1),
+                    value: Formatters.formatPercentage(usagePercent, decimals: 1),
                     timeRange: $appState.selectedTimeRange
                 )
 
-                // Main graph — memory pressure over time
+                // Main graph — memory usage over time
                 PerformanceGraph(
-                    series: mem.pressureSeries,
+                    series: mem.usageSeries,
                     color: accent,
                     maxValue: 100,
                     timeRange: appState.selectedTimeRange
                 )
                 .frame(height: 240)
 
-                // Pressure gauge + description
-                pressureSection(theme: theme, mem: mem)
+                // Memory pressure card with its own graph
+                pressureCard(theme: theme, mem: mem)
 
                 // Stats grid
                 LazyVGrid(columns: statsColumns, spacing: 12) {
@@ -77,41 +78,63 @@ struct MemoryDetailView: View {
                 // Memory composition bar
                 compositionSection(theme: theme, accent: accent, mem: mem)
             }
-            .padding(28)
+            .padding(32)
         }
     }
 
     @ViewBuilder
-    private func pressureSection(theme: any AppTheme, mem: MemoryViewModel) -> some View {
-        HStack(alignment: .top, spacing: 24) {
-            PressureGauge(
-                value: mem.pressurePercent,
-                level: mem.pressureLevel
-            )
-            .frame(width: 140, height: 90)
+    private func pressureCard(theme: any AppTheme, mem: MemoryViewModel) -> some View {
+        let pressureColor = pressureAccent(for: mem.pressureLevel, theme: theme)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Memory Pressure")
-                    .font(.system(size: 13, weight: .semibold))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MEMORY PRESSURE")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.secondaryText)
                     .tracking(0.5)
-                    .textCase(.uppercase)
 
-                Text(pressureDescription(for: mem.pressureLevel))
-                    .font(.system(size: 12))
-                    .foregroundStyle(theme.tertiaryText)
-                    .lineSpacing(4)
+                Spacer()
+
+                Text(mem.pressureLevel.rawValue)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(pressureColor)
+
+                Circle()
+                    .fill(pressureColor)
+                    .frame(width: 8, height: 8)
             }
+
+            PerformanceGraph(
+                series: mem.pressureSeries,
+                color: pressureColor,
+                maxValue: 100,
+                timeRange: appState.selectedTimeRange
+            )
+            .frame(height: 120)
+
+            Text(pressureDescription(for: mem.pressureLevel))
+                .font(.system(size: 11))
+                .foregroundStyle(theme.tertiaryText)
+                .lineSpacing(3)
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(theme.cardBackground)
+                .shadow(color: theme.cardShadow ? .black.opacity(0.06) : .clear, radius: 3, y: 1)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(theme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(theme.cardShadow ? .clear : theme.border, lineWidth: 1)
         )
+    }
+
+    private func pressureAccent(for level: MemoryMonitor.PressureLevel, theme: any AppTheme) -> Color {
+        switch level {
+        case .normal: return .green
+        case .warning: return .yellow
+        case .critical: return .red
+        }
     }
 
     @ViewBuilder
@@ -127,7 +150,7 @@ struct MemoryDetailView: View {
 
         VStack(alignment: .leading, spacing: 12) {
             Text("Memory Composition")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(theme.secondaryText)
                 .tracking(0.5)
                 .textCase(.uppercase)
@@ -168,9 +191,9 @@ struct MemoryDetailView: View {
         case .normal:
             return "System memory resources are available. The system is not under memory pressure."
         case .warning:
-            return "System memory resources are becoming constrained. The system may begin compressing memory to free up space."
+            return "Memory resources are becoming constrained. The system may begin compressing memory."
         case .critical:
-            return "System memory resources are critically low. The system is actively swapping and may become unresponsive."
+            return "Memory resources are critically low. The system is actively swapping."
         }
     }
 }

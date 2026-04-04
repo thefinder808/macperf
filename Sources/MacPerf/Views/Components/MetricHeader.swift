@@ -11,7 +11,7 @@ struct MetricHeader: View {
         let theme = themeManager.current
         let accent = theme.accent(for: category)
 
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .center, spacing: 16) {
             Image(systemName: category.systemImage)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(accent)
@@ -22,7 +22,7 @@ struct MetricHeader: View {
                 )
 
             Text(category.rawValue)
-                .font(.system(size: 22, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(theme.primaryText)
 
             Spacer()
@@ -30,7 +30,7 @@ struct MetricHeader: View {
             TimeRangePicker(selection: $timeRange)
 
             Text(value)
-                .font(.system(size: 48, weight: .bold, design: .rounded).monospacedDigit())
+                .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
                 .foregroundStyle(accent)
                 .shadow(color: theme.glowEnabled ? accent.opacity(0.6) : .clear, radius: 12)
                 .contentTransition(.numericText())

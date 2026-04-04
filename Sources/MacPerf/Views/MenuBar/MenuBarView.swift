@@ -38,7 +38,7 @@ struct MenuBarView: View {
 
             // GPU
             menuBarRow(
-                icon: "gpu",
+                icon: "rectangle.3.group",
                 label: "GPU",
                 value: Formatters.formatPercentage(appState.gpuUsage, decimals: 1),
                 series: appState.gpuSeries,

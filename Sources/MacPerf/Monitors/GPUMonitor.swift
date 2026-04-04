@@ -16,6 +16,7 @@ final class GPUMonitor {
         let result = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter)
 
         guard result == KERN_SUCCESS else {
+            if iter != 0 { IOObjectRelease(iter) }
             return emptySample()
         }
 

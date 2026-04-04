@@ -5,6 +5,7 @@ struct MacPerfApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var settingsManager = SettingsManager()
+    @State private var statusBarController: StatusBarController?
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,15 @@ struct MacPerfApp: App {
                         .environmentObject(appState)
                         .environmentObject(themeManager)
                         .environmentObject(settingsManager)
+                }
+                .onAppear {
+                    if statusBarController == nil {
+                        statusBarController = StatusBarController(
+                            appState: appState,
+                            settingsManager: settingsManager,
+                            themeManager: themeManager
+                        )
+                    }
                 }
         }
         .defaultSize(width: 1100, height: 700)
@@ -81,31 +91,12 @@ struct MacPerfApp: App {
             }
         }
 
-        // Menu bar extra
-        MenuBarExtra {
-            MenuBarView()
-                .environmentObject(appState)
-                .environmentObject(themeManager)
-                .environmentObject(settingsManager)
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "cpu")
-                Text(menuBarLabel)
-                    .monospacedDigit()
-            }
-        }
-        .menuBarExtraStyle(.window)
-
         Settings {
             SettingsView()
                 .environmentObject(settingsManager)
                 .environmentObject(appState)
                 .environmentObject(themeManager)
         }
-    }
-
-    private var menuBarLabel: String {
-        settingsManager.menuBarLabel(from: appState)
     }
 
     private var colorScheme: ColorScheme? {

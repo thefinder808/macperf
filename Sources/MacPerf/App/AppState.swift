@@ -28,8 +28,8 @@ final class AppState: ObservableObject {
     // Convenience accessors for sidebar/overview
     var cpuUsage: Double { cpuVM.overallUsage }
     var cpuSeries: TimeSeries { cpuVM.overallSeries }
-    var memoryUsage: Double { memoryVM.pressurePercent }
-    var memorySeries: TimeSeries { memoryVM.pressureSeries }
+    var memoryUsage: Double { memoryVM.totalBytes > 0 ? Double(memoryVM.usedBytes) / Double(memoryVM.totalBytes) * 100 : 0 }
+    var memorySeries: TimeSeries { memoryVM.usageSeries }
     var diskReadRate: Double { diskVM.readBytesPerSec }
     var diskReadSeries: TimeSeries { diskVM.readSeries }
     var networkDownRate: Double { networkVM.downloadBytesPerSec }
@@ -58,6 +58,10 @@ final class AppState: ObservableObject {
         }
 
         startTimer()
+    }
+
+    deinit {
+        timerSubscription?.cancel()
     }
 
     private func startTimer() {

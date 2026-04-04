@@ -48,7 +48,7 @@ struct NetworkDetailView: View {
                     StatCard(title: "Interface", value: net.activeInterface)
                 }
             }
-            .padding(28)
+            .padding(32)
         }
     }
 

@@ -6,9 +6,9 @@ struct OverviewView: View {
     @State private var cardsAppeared = false
 
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
     ]
 
     private var cardData: [(category: MetricCategory, valueText: String, series: TimeSeries)] {
@@ -28,14 +28,14 @@ struct OverviewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
                 // Header
                 HStack(spacing: 12) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(themeManager.current.accent(for: .overview))
                     Text("Overview")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(themeManager.current.primaryText)
 
                     // Live pulse dot
@@ -54,7 +54,7 @@ struct OverviewView: View {
                 .padding(.bottom, 4)
 
                 // Mini graph cards grid with staggered entrance
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(Array(cardData.enumerated()), id: \.element.category) { index, data in
                         MiniGraphCard(
                             category: data.category,
@@ -79,7 +79,7 @@ struct OverviewView: View {
                 }
                 .padding(.top, 8)
             }
-            .padding(28)
+            .padding(32)
         }
         .onAppear {
             cardsAppeared = false

@@ -77,7 +77,7 @@ struct ThermalDetailView: View {
                     fanSection(theme: theme, fans: thermal.fanSpeeds)
                 }
             }
-            .padding(28)
+            .padding(32)
         }
     }
 

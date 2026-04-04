@@ -15,7 +15,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .cpu: return "cpu"
         case .memory: return "memorychip"
-        case .gpu: return "gpu"
+        case .gpu: return "rectangle.3.group"
         case .disk: return "internaldrive"
         case .network: return "network"
         case .thermal: return "thermometer.medium"
@@ -34,6 +34,17 @@ enum MenuBarMetric: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    var shortLabel: String {
+        switch self {
+        case .cpu: return "CPU"
+        case .memory: return "MEM"
+        case .gpu: return "GPU"
+        case .disk: return "DSK"
+        case .network: return "NET"
+        case .thermal: return "TMP"
+        }
+    }
+
     func formatValue(from appState: AppState) -> String {
         switch self {
         case .cpu: return "\(Int(appState.cpuUsage))%"
@@ -48,9 +59,14 @@ enum MenuBarMetric: String, CaseIterable, Identifiable, Hashable {
 
 final class SettingsManager: ObservableObject {
     private static let metricsKey = "macperf.menuBarMetrics"
+    private static let labelModeKey = "macperf.menuBarLabelMode"
 
     @Published var enabledMenuBarMetrics: Set<MenuBarMetric> {
         didSet { save() }
+    }
+
+    @Published var useTextLabels: Bool {
+        didSet { UserDefaults.standard.set(useTextLabels, forKey: Self.labelModeKey) }
     }
 
     init() {
@@ -60,6 +76,7 @@ final class SettingsManager: ObservableObject {
         } else {
             self.enabledMenuBarMetrics = [.cpu, .memory]
         }
+        self.useTextLabels = UserDefaults.standard.bool(forKey: Self.labelModeKey)
     }
 
     private func save() {
@@ -73,7 +90,12 @@ final class SettingsManager: ObservableObject {
     }
 
     func menuBarLabel(from appState: AppState) -> String {
-        let parts = sortedEnabledMetrics.map { $0.formatValue(from: appState) }
-        return parts.isEmpty ? "—" : parts.joined(separator: " ")
+        if useTextLabels {
+            let parts = sortedEnabledMetrics.map { "\($0.shortLabel) \($0.formatValue(from: appState))" }
+            return parts.isEmpty ? "MacPerf" : parts.joined(separator: "  ")
+        } else {
+            let parts = sortedEnabledMetrics.map { $0.formatValue(from: appState) }
+            return parts.isEmpty ? "—" : parts.joined(separator: "  ")
+        }
     }
 }

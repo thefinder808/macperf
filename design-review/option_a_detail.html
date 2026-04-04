@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacPerf - Option A: CPU Detail View</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, 'SF Pro', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #E0E0E4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .window {
+    width: 1100px;
+    height: 700px;
+    background: #F8F8FA;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Title bar */
+  .titlebar {
+    height: 52px;
+    background: linear-gradient(180deg, #FAFAFA 0%, #F2F2F7 100%);
+    border-bottom: 1px solid #D5D5DA;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .traffic-lights {
+    display: flex;
+    gap: 8px;
+  }
+
+  .traffic-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .tl-close { background: #FF5F57; border: 1px solid #E0443E; }
+  .tl-minimize { background: #FEBC2E; border: 1px solid #DEA123; }
+  .tl-maximize { background: #28C840; border: 1px solid #1AAB29; }
+
+  .titlebar-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #1D1D1F;
+    letter-spacing: -0.01em;
+  }
+
+  /* Main content area */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    background: #F2F2F7;
+    border-right: 1px solid #D5D5DA;
+    padding: 16px 12px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #86868B;
+    padding: 8px 12px 12px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    gap: 10px;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+  }
+
+  .sidebar-item:hover {
+    background: rgba(0,0,0,0.04);
+  }
+
+  .sidebar-item.active {
+    background: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .sidebar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1D1D1F;
+  }
+
+  .sidebar-sparkline {
+    width: 72px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+  }
+
+  /* Detail header */
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .detail-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .detail-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #007AFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .detail-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .detail-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1D1D1F;
+    letter-spacing: -0.02em;
+  }
+
+  .detail-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #86868B;
+  }
+
+  .detail-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .detail-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #007AFF;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .time-range-picker {
+    display: flex;
+    background: #F2F2F7;
+    border-radius: 8px;
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .time-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    color: #86868B;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+  }
+
+  .time-btn.active {
+    background: #FFFFFF;
+    color: #1D1D1F;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .time-btn:hover:not(.active) {
+    color: #1D1D1F;
+  }
+
+  /* Chart card */
+  .chart-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E8E8EC;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .chart-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .chart-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #86868B;
+  }
+
+  .chart-card-legend {
+    display: flex;
+    gap: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #86868B;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .chart-canvas {
+    width: 100%;
+    height: 240px;
+    display: block;
+  }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    border: 1px solid #E8E8EC;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    padding: 14px 16px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #AEAEB2;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1D1D1F;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .stat-bar-bg {
+    height: 4px;
+    background: #F2F2F7;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: #007AFF;
+    transition: width 0.5s ease;
+  }
+
+  /* Per-core section */
+  .per-core-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E8E8EC;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    padding: 20px;
+  }
+
+  .per-core-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .per-core-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #86868B;
+  }
+
+  .per-core-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    color: #AEAEB2;
+  }
+
+  .core-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .core-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .core-label {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+    color: #86868B;
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .core-type {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+  }
+
+  .core-type-p {
+    background: rgba(0,122,255,0.12);
+    color: #007AFF;
+  }
+
+  .core-type-e {
+    background: rgba(134,134,139,0.12);
+    color: #86868B;
+  }
+
+  .core-bar-bg {
+    flex: 1;
+    height: 18px;
+    background: #F2F2F7;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .core-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: #007AFF;
+    transition: width 0.5s ease;
+  }
+
+  .core-percentage {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+    color: #1D1D1F;
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 10px 40px;
+  }
+
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: #E8E8EC;
+  }
+
+  .divider-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #AEAEB2;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="traffic-lights">
+      <div class="traffic-light tl-close"></div>
+      <div class="traffic-light tl-minimize"></div>
+      <div class="traffic-light tl-maximize"></div>
+    </div>
+    <div class="titlebar-text">MacPerf</div>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">Monitor</div>
+
+      <div class="sidebar-item" data-color="#007AFF">
+        <div class="sidebar-icon" style="background:rgba(0,122,255,0.12);color:#007AFF;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="14" rx="3" opacity="0.3"/><rect x="3" y="5" width="4" height="8" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">Overview</span>
+        <canvas class="sidebar-sparkline" data-color="#007AFF"></canvas>
+      </div>
+
+      <div class="sidebar-item active" data-color="#007AFF">
+        <div class="sidebar-icon" style="background:rgba(0,122,255,0.12);color:#007AFF;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">CPU</span>
+        <canvas class="sidebar-sparkline" data-color="#007AFF"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#AF52DE">
+        <div class="sidebar-icon" style="background:rgba(175,82,222,0.12);color:#AF52DE;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="1" width="10" height="14" rx="2"/><rect x="5" y="4" width="6" height="3" rx="1" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">Memory</span>
+        <canvas class="sidebar-sparkline" data-color="#AF52DE"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#34C759">
+        <div class="sidebar-icon" style="background:rgba(52,199,89,0.12);color:#34C759;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">Disk</span>
+        <canvas class="sidebar-sparkline" data-color="#34C759"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#FF9500">
+        <div class="sidebar-icon" style="background:rgba(255,149,0,0.12);color:#FF9500;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1 8 L5 4 L5 6 L11 6 L11 4 L15 8 L11 12 L11 10 L5 10 L5 12 Z"/></svg>
+        </div>
+        <span class="sidebar-label">Network</span>
+        <canvas class="sidebar-sparkline" data-color="#FF9500"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#5AC8FA">
+        <div class="sidebar-icon" style="background:rgba(90,200,250,0.12);color:#5AC8FA;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="3" width="14" height="10" rx="2"/><rect x="5" y="1" width="6" height="3" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">GPU</span>
+        <canvas class="sidebar-sparkline" data-color="#5AC8FA"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#FF3B30">
+        <div class="sidebar-icon" style="background:rgba(255,59,48,0.12);color:#FF3B30;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1 L10 6 L8 14 L6 6 Z"/><circle cx="8" cy="5" r="3" opacity="0.3"/></svg>
+        </div>
+        <span class="sidebar-label">Thermal</span>
+        <canvas class="sidebar-sparkline" data-color="#FF3B30"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#86868B">
+        <div class="sidebar-icon" style="background:rgba(134,134,139,0.12);color:#86868B;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="3" rx="1"/><rect x="1" y="7" width="14" height="3" rx="1"/><rect x="1" y="12" width="9" height="3" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">Processes</span>
+        <canvas class="sidebar-sparkline" data-color="#86868B"></canvas>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Detail Header -->
+      <div class="detail-header">
+        <div class="detail-header-left">
+          <div class="detail-icon">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="white"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3" fill="#007AFF"/></svg>
+          </div>
+          <div class="detail-title-group">
+            <span class="detail-title">CPU</span>
+            <span class="detail-subtitle">Apple M2 Pro &middot; 12 Cores</span>
+          </div>
+        </div>
+        <div class="detail-header-right">
+          <div class="time-range-picker">
+            <button class="time-btn active">1m</button>
+            <button class="time-btn">5m</button>
+            <button class="time-btn">15m</button>
+            <button class="time-btn">1h</button>
+            <button class="time-btn">4h</button>
+          </div>
+          <div class="detail-value">34.2%</div>
+        </div>
+      </div>
+
+      <!-- Performance Graph -->
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">CPU Usage Over Time</span>
+          <div class="chart-card-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#007AFF;"></div>
+              Total
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#007AFF;opacity:0.4;"></div>
+              User
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#FF3B30;opacity:0.5;"></div>
+              System
+            </div>
+          </div>
+        </div>
+        <canvas class="chart-canvas" id="mainChart"></canvas>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">User</div>
+          <div class="stat-value">22.8%</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:22.8%;"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">System</div>
+          <div class="stat-value">11.4%</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:11.4%;background:#FF3B30;"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Idle</div>
+          <div class="stat-value">65.8%</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:65.8%;background:#34C759;"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Threads</div>
+          <div class="stat-value">1,847</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:46%;background:#AF52DE;"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Processes</div>
+          <div class="stat-value">412</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:33%;background:#FF9500;"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Load Avg</div>
+          <div class="stat-value">3.42</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" style="width:28.5%;background:#5AC8FA;"></div></div>
+        </div>
+      </div>
+
+      <!-- Per-Core Section -->
+      <div class="per-core-card">
+        <div class="per-core-header">
+          <span class="per-core-title">Per-Core Usage</span>
+          <span class="per-core-subtitle">4 Performance + 8 Efficiency</span>
+        </div>
+
+        <!-- Performance cores -->
+        <div id="coreRows"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generate smooth mock data
+function generateData(count, base, variance) {
+  const data = [];
+  let value = base;
+  for (let i = 0; i < count; i++) {
+    value += (Math.random() - 0.5) * variance;
+    value = Math.max(Math.max(0, base - variance * 2.5), Math.min(Math.min(100, base + variance * 2.5), value));
+    data.push(value);
+  }
+  return data;
+}
+
+// Draw sparkline
+function drawSparkline(canvas, color, data, filled) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const padY = h * 0.15;
+
+  const points = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * w,
+    y: padY + (1 - (v - min) / range) * (h - padY * 2)
+  }));
+
+  if (filled) {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, color + '20');
+    grad.addColorStop(1, color + '02');
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, h);
+    ctx.lineTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const cpx1 = (points[i-1].x + points[i].x) / 2;
+      const cpx2 = (points[i-1].x + points[i].x) / 2;
+      ctx.bezierCurveTo(cpx1, points[i-1].y, cpx2, points[i].y, points[i].x, points[i].y);
+    }
+    ctx.lineTo(points[points.length-1].x, h);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    const cpx1 = (points[i-1].x + points[i].x) / 2;
+    const cpx2 = (points[i-1].x + points[i].x) / 2;
+    ctx.bezierCurveTo(cpx1, points[i-1].y, cpx2, points[i].y, points[i].x, points[i].y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = filled ? 1.5 : 1.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+// Draw main chart with grid
+function drawMainChart() {
+  const canvas = document.getElementById('mainChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const padLeft = 36;
+  const padRight = 12;
+  const padTop = 8;
+  const padBottom = 24;
+  const chartW = w - padLeft - padRight;
+  const chartH = h - padTop - padBottom;
+
+  // Grid lines and Y-axis labels
+  const ySteps = [0, 25, 50, 75, 100];
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.font = '10px -apple-system, SF Mono, Menlo, monospace';
+
+  ySteps.forEach(v => {
+    const y = padTop + chartH - (v / 100) * chartH;
+    // Grid line
+    ctx.strokeStyle = '#E8E8EC';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(w - padRight, y);
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = '#AEAEB2';
+    ctx.fillText(v + '%', padLeft - 8, y);
+  });
+
+  // X-axis labels
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#AEAEB2';
+  const xLabels = ['-60s', '-45s', '-30s', '-15s', 'now'];
+  xLabels.forEach((label, i) => {
+    const x = padLeft + (i / (xLabels.length - 1)) * chartW;
+    ctx.fillText(label, x, h - padBottom + 8);
+  });
+
+  // Generate data for three lines
+  const totalData = generateData(60, 34, 6);
+  const userData = generateData(60, 22, 4);
+  const systemData = generateData(60, 11, 3);
+
+  function drawLine(data, color, alpha, lineWidth, fill) {
+    const points = data.map((v, i) => ({
+      x: padLeft + (i / (data.length - 1)) * chartW,
+      y: padTop + chartH - (v / 100) * chartH
+    }));
+
+    if (fill) {
+      const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+      grad.addColorStop(0, color + '30');
+      grad.addColorStop(1, color + '03');
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, padTop + chartH);
+      ctx.lineTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const cpx1 = (points[i-1].x + points[i].x) / 2;
+        const cpx2 = (points[i-1].x + points[i].x) / 2;
+        ctx.bezierCurveTo(cpx1, points[i-1].y, cpx2, points[i].y, points[i].x, points[i].y);
+      }
+      ctx.lineTo(points[points.length-1].x, padTop + chartH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const cpx1 = (points[i-1].x + points[i].x) / 2;
+      const cpx2 = (points[i-1].x + points[i].x) / 2;
+      ctx.bezierCurveTo(cpx1, points[i-1].y, cpx2, points[i].y, points[i].x, points[i].y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw system first (back), then user, then total (front)
+  drawLine(systemData, '#FF3B30', 0.5, 1.5, false);
+  drawLine(userData, '#007AFF', 0.4, 1.5, false);
+  drawLine(totalData, '#007AFF', 1, 2, true);
+}
+
+// Generate per-core rows
+function generateCoreRows() {
+  const container = document.getElementById('coreRows');
+  const pCores = [
+    { label: 'P0', pct: 62 },
+    { label: 'P1', pct: 48 },
+    { label: 'P2', pct: 71 },
+    { label: 'P3', pct: 55 },
+  ];
+  const eCores = [
+    { label: 'E0', pct: 18 },
+    { label: 'E1', pct: 24 },
+    { label: 'E2', pct: 12 },
+    { label: 'E3', pct: 31 },
+    { label: 'E4', pct: 8 },
+    { label: 'E5', pct: 15 },
+    { label: 'E6', pct: 22 },
+    { label: 'E7', pct: 6 },
+  ];
+
+  function coreRow(core, type) {
+    const typeClass = type === 'P' ? 'core-type-p' : 'core-type-e';
+    const barColor = type === 'P' ? '#007AFF' : 'rgba(0,122,255,0.55)';
+    return `
+      <div class="core-row">
+        <span class="core-label">${core.label}</span>
+        <span class="core-type ${typeClass}">${type}</span>
+        <div class="core-bar-bg">
+          <div class="core-bar-fill" style="width:${core.pct}%;background:${barColor};"></div>
+        </div>
+        <span class="core-percentage">${core.pct}%</span>
+      </div>
+    `;
+  }
+
+  let html = '';
+  pCores.forEach(c => { html += coreRow(c, 'P'); });
+
+  html += `
+    <div class="section-divider">
+      <span class="divider-label">Efficiency</span>
+      <div class="divider-line"></div>
+    </div>
+  `;
+
+  eCores.forEach(c => { html += coreRow(c, 'E'); });
+  container.innerHTML = html;
+}
+
+// Render sidebar sparklines
+document.querySelectorAll('.sidebar-sparkline').forEach(canvas => {
+  const color = canvas.getAttribute('data-color');
+  const data = generateData(24, 40 + Math.random() * 30, 8);
+  drawSparkline(canvas, color, data, false);
+});
+
+// Render main chart and core rows
+drawMainChart();
+generateCoreRows();
+
+// Time range picker interactivity
+document.querySelectorAll('.time-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawMainChart();
+  });
+});
+</script>
+
+</body>
+</html>

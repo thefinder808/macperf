@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacPerf - Option A: Overview Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, 'SF Pro', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #E0E0E4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .window {
+    width: 1100px;
+    height: 700px;
+    background: #F8F8FA;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Title bar */
+  .titlebar {
+    height: 52px;
+    background: linear-gradient(180deg, #FAFAFA 0%, #F2F2F7 100%);
+    border-bottom: 1px solid #D5D5DA;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .traffic-lights {
+    display: flex;
+    gap: 8px;
+  }
+
+  .traffic-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .tl-close { background: #FF5F57; border: 1px solid #E0443E; }
+  .tl-minimize { background: #FEBC2E; border: 1px solid #DEA123; }
+  .tl-maximize { background: #28C840; border: 1px solid #1AAB29; }
+
+  .titlebar-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #1D1D1F;
+    letter-spacing: -0.01em;
+  }
+
+  /* Main content area */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px;
+    background: #F2F2F7;
+    border-right: 1px solid #D5D5DA;
+    padding: 16px 12px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #86868B;
+    padding: 8px 12px 12px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    gap: 10px;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+  }
+
+  .sidebar-item:hover {
+    background: rgba(0,0,0,0.04);
+  }
+
+  .sidebar-item.active {
+    background: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .sidebar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1D1D1F;
+  }
+
+  .sidebar-sparkline {
+    width: 72px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+  }
+
+  .content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .content-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .content-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1D1D1F;
+    letter-spacing: -0.02em;
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #34C759;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #34C759;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .system-info-badge {
+    font-size: 13px;
+    font-weight: 500;
+    color: #86868B;
+    background: #FFFFFF;
+    border: 1px solid #E8E8EC;
+    border-radius: 6px;
+    padding: 4px 12px;
+  }
+
+  /* Metric cards grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E8E8EC;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .metric-card.cpu::before { background: #007AFF; }
+  .metric-card.memory::before { background: #AF52DE; }
+  .metric-card.gpu::before { background: #5AC8FA; }
+  .metric-card.disk::before { background: #34C759; }
+  .metric-card.network::before { background: #FF9500; }
+  .metric-card.thermal::before { background: #FF3B30; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .card-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .card-category {
+    font-size: 13px;
+    font-weight: 500;
+    color: #86868B;
+  }
+
+  .card-value {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+    line-height: 1.1;
+  }
+
+  .card-value.cpu-color { color: #007AFF; }
+  .card-value.memory-color { color: #AF52DE; }
+  .card-value.gpu-color { color: #5AC8FA; }
+  .card-value.disk-color { color: #34C759; }
+  .card-value.network-color { color: #FF9500; }
+  .card-value.thermal-color { color: #FF3B30; }
+
+  .card-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #AEAEB2;
+    margin-bottom: 14px;
+  }
+
+  .card-sparkline {
+    width: 100%;
+    height: 56px;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid #E8E8EC;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    background: #FFFFFF;
+  }
+
+  .footer-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .footer-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #AEAEB2;
+  }
+
+  .footer-value {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #86868B;
+  }
+
+  .footer-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #D5D5DA;
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="traffic-lights">
+      <div class="traffic-light tl-close"></div>
+      <div class="traffic-light tl-minimize"></div>
+      <div class="traffic-light tl-maximize"></div>
+    </div>
+    <div class="titlebar-text">MacPerf</div>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">Monitor</div>
+
+      <div class="sidebar-item active" data-color="#007AFF">
+        <div class="sidebar-icon" style="background:rgba(0,122,255,0.12);color:#007AFF;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="14" rx="3" opacity="0.3"/><rect x="3" y="5" width="4" height="8" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">Overview</span>
+        <canvas class="sidebar-sparkline" data-color="#007AFF"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#007AFF">
+        <div class="sidebar-icon" style="background:rgba(0,122,255,0.12);color:#007AFF;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">CPU</span>
+        <canvas class="sidebar-sparkline" data-color="#007AFF"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#AF52DE">
+        <div class="sidebar-icon" style="background:rgba(175,82,222,0.12);color:#AF52DE;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="1" width="10" height="14" rx="2"/><rect x="5" y="4" width="6" height="3" rx="1" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">Memory</span>
+        <canvas class="sidebar-sparkline" data-color="#AF52DE"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#34C759">
+        <div class="sidebar-icon" style="background:rgba(52,199,89,0.12);color:#34C759;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="white"/></svg>
+        </div>
+        <span class="sidebar-label">Disk</span>
+        <canvas class="sidebar-sparkline" data-color="#34C759"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#FF9500">
+        <div class="sidebar-icon" style="background:rgba(255,149,0,0.12);color:#FF9500;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1 8 L5 4 L5 6 L11 6 L11 4 L15 8 L11 12 L11 10 L5 10 L5 12 Z"/></svg>
+        </div>
+        <span class="sidebar-label">Network</span>
+        <canvas class="sidebar-sparkline" data-color="#FF9500"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#5AC8FA">
+        <div class="sidebar-icon" style="background:rgba(90,200,250,0.12);color:#5AC8FA;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="3" width="14" height="10" rx="2"/><rect x="5" y="1" width="6" height="3" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">GPU</span>
+        <canvas class="sidebar-sparkline" data-color="#5AC8FA"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#FF3B30">
+        <div class="sidebar-icon" style="background:rgba(255,59,48,0.12);color:#FF3B30;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1 L10 6 L8 14 L6 6 Z"/><circle cx="8" cy="5" r="3" opacity="0.3"/></svg>
+        </div>
+        <span class="sidebar-label">Thermal</span>
+        <canvas class="sidebar-sparkline" data-color="#FF3B30"></canvas>
+      </div>
+
+      <div class="sidebar-item" data-color="#86868B">
+        <div class="sidebar-icon" style="background:rgba(134,134,139,0.12);color:#86868B;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="3" rx="1"/><rect x="1" y="7" width="14" height="3" rx="1"/><rect x="1" y="12" width="9" height="3" rx="1"/></svg>
+        </div>
+        <span class="sidebar-label">Processes</span>
+        <canvas class="sidebar-sparkline" data-color="#86868B"></canvas>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="content-header">
+        <div class="content-header-left">
+          <span class="content-title">Overview</span>
+          <div class="live-indicator">
+            <div class="live-dot"></div>
+            Live
+          </div>
+        </div>
+        <div class="system-info-badge">Apple M2 Pro &middot; macOS 15.3</div>
+      </div>
+
+      <div class="cards-grid">
+        <!-- CPU Card -->
+        <div class="metric-card cpu">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(0,122,255,0.12);color:#007AFF;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="8" r="3" fill="white"/></svg>
+            </div>
+            <span class="card-category">CPU</span>
+          </div>
+          <div class="card-value cpu-color">34.2%</div>
+          <div class="card-subtitle">12 Cores Active</div>
+          <canvas class="card-sparkline" data-color="#007AFF" data-base="34"></canvas>
+        </div>
+
+        <!-- Memory Card -->
+        <div class="metric-card memory">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(175,82,222,0.12);color:#AF52DE;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="1" width="10" height="14" rx="2"/><rect x="5" y="4" width="6" height="3" rx="1" fill="white"/></svg>
+            </div>
+            <span class="card-category">Memory</span>
+          </div>
+          <div class="card-value memory-color">11.3 GB</div>
+          <div class="card-subtitle">of 16 GB Used</div>
+          <canvas class="card-sparkline" data-color="#AF52DE" data-base="70"></canvas>
+        </div>
+
+        <!-- GPU Card -->
+        <div class="metric-card gpu">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(90,200,250,0.12);color:#5AC8FA;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="3" width="14" height="10" rx="2"/><rect x="5" y="1" width="6" height="3" rx="1"/></svg>
+            </div>
+            <span class="card-category">GPU</span>
+          </div>
+          <div class="card-value gpu-color">18.7%</div>
+          <div class="card-subtitle">19-core Apple GPU</div>
+          <canvas class="card-sparkline" data-color="#5AC8FA" data-base="19"></canvas>
+        </div>
+
+        <!-- Disk Card -->
+        <div class="metric-card disk">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(52,199,89,0.12);color:#34C759;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="white"/></svg>
+            </div>
+            <span class="card-category">Disk</span>
+          </div>
+          <div class="card-value disk-color">42.1 MB/s</div>
+          <div class="card-subtitle">Read &middot; 12.4 MB/s Write</div>
+          <canvas class="card-sparkline" data-color="#34C759" data-base="42"></canvas>
+        </div>
+
+        <!-- Network Card -->
+        <div class="metric-card network">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(255,149,0,0.12);color:#FF9500;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 8 L5 4 L5 6 L11 6 L11 4 L15 8 L11 12 L11 10 L5 10 L5 12 Z"/></svg>
+            </div>
+            <span class="card-category">Network</span>
+          </div>
+          <div class="card-value network-color">2.4 MB/s</div>
+          <div class="card-subtitle">Down &middot; 0.8 MB/s Up</div>
+          <canvas class="card-sparkline" data-color="#FF9500" data-base="25"></canvas>
+        </div>
+
+        <!-- Thermal Card -->
+        <div class="metric-card thermal">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(255,59,48,0.12);color:#FF3B30;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1 L10 6 L8 14 L6 6 Z"/><circle cx="8" cy="5" r="3" opacity="0.3"/></svg>
+            </div>
+            <span class="card-category">Thermal</span>
+          </div>
+          <div class="card-value thermal-color">47.2 C</div>
+          <div class="card-subtitle">CPU Die Temperature</div>
+          <canvas class="card-sparkline" data-color="#FF3B30" data-base="47"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-item">
+      <span class="footer-label">Cores</span>
+      <span class="footer-value">12 (4P + 8E)</span>
+    </div>
+    <div class="footer-dot"></div>
+    <div class="footer-item">
+      <span class="footer-label">RAM</span>
+      <span class="footer-value">16 GB Unified</span>
+    </div>
+    <div class="footer-dot"></div>
+    <div class="footer-item">
+      <span class="footer-label">GPU</span>
+      <span class="footer-value">19-Core</span>
+    </div>
+    <div class="footer-dot"></div>
+    <div class="footer-item">
+      <span class="footer-label">Storage</span>
+      <span class="footer-value">512 GB SSD</span>
+    </div>
+    <div class="footer-dot"></div>
+    <div class="footer-item">
+      <span class="footer-label">Uptime</span>
+      <span class="footer-value">4d 7h 23m</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generate smooth mock data
+function generateData(count, base, variance) {
+  const data = [];
+  let value = base;
+  for (let i = 0; i < count; i++) {
+    value += (Math.random() - 0.5) * variance;
+    value = Math.max(base - variance * 2, Math.min(base + variance * 2, value));
+    data.push(value);
+  }
+  return data;
+}
+
+// Draw sparkline on a canvas
+function drawSparkline(canvas, color, data, filled) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const padY = h * 0.15;
+
+  // Build points
+  const points = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * w,
+    y: padY + (1 - (v - min) / range) * (h - padY * 2)
+  }));
+
+  // Draw gradient fill
+  if (filled) {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, color + '20');
+    grad.addColorStop(1, color + '02');
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, h);
+    ctx.lineTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const cp1x = (points[i - 1].x + points[i].x) / 2;
+      const cp1y = points[i - 1].y;
+      const cp2x = (points[i - 1].x + points[i].x) / 2;
+      const cp2y = points[i].y;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, points[i].x, points[i].y);
+    }
+    ctx.lineTo(points[points.length - 1].x, h);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // Draw line
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    const cp1x = (points[i - 1].x + points[i].x) / 2;
+    const cp1y = points[i - 1].y;
+    const cp2x = (points[i - 1].x + points[i].x) / 2;
+    const cp2y = points[i].y;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, points[i].x, points[i].y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = filled ? 1.5 : 1.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+// Render sidebar sparklines
+document.querySelectorAll('.sidebar-sparkline').forEach(canvas => {
+  const color = canvas.getAttribute('data-color');
+  const data = generateData(24, 40 + Math.random() * 30, 8);
+  drawSparkline(canvas, color, data, false);
+});
+
+// Render card sparklines
+document.querySelectorAll('.card-sparkline').forEach(canvas => {
+  const color = canvas.getAttribute('data-color');
+  const base = parseFloat(canvas.getAttribute('data-base')) || 40;
+  const data = generateData(40, base, base * 0.15);
+  drawSparkline(canvas, color, data, true);
+});
+</script>
+
+</body>
+</html>

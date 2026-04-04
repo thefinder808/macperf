@@ -46,7 +46,7 @@ struct StorageDetailView: View {
                         .padding(.top, 40)
                 }
             }
-            .padding(28)
+            .padding(32)
         }
     }
 

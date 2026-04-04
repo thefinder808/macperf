@@ -70,7 +70,7 @@ struct CPUDetailView: View {
                 // Per-core grid
                 perCoreSection(theme: theme, accent: accent, usages: cpu.perCoreUsages)
             }
-            .padding(28)
+            .padding(32)
         }
     }
 

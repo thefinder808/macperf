@@ -165,10 +165,11 @@ struct PerformanceGraph: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(theme.graphBackground)
+                .shadow(color: theme.cardShadow ? .black.opacity(0.06) : .clear, radius: 3, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(theme.border, lineWidth: 1)
+                .strokeBorder(theme.cardShadow ? .clear : theme.border, lineWidth: 1)
         )
     }
 

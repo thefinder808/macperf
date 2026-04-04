@@ -40,7 +40,7 @@ struct GPUDetailView: View {
                     StatCard(title: "GPU", value: appState.systemInfo.gpuName)
                 }
             }
-            .padding(28)
+            .padding(32)
         }
     }
 }

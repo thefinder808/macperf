@@ -4,6 +4,7 @@ import Combine
 final class MemoryViewModel: ObservableObject {
     let monitor = MemoryMonitor()
 
+    let usageSeries = TimeSeries()
     let pressureSeries = TimeSeries()
 
     @Published var totalBytes: UInt64 = 0
@@ -30,6 +31,8 @@ final class MemoryViewModel: ObservableObject {
         pressurePercent = sample.pressurePercent
         pressureLevel = sample.pressureLevel
 
+        let usagePercent = totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) * 100 : 0
+        usageSeries.append(usagePercent)
         pressureSeries.append(sample.pressurePercent)
     }
 }

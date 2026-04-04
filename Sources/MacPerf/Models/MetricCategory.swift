@@ -21,7 +21,7 @@ enum MetricCategory: String, CaseIterable, Identifiable, Hashable {
         case .memory: return "memorychip"
         case .disk: return "internaldrive"
         case .network: return "network"
-        case .gpu: return "gpu"
+        case .gpu: return "rectangle.3.group"
         case .thermal: return "thermometer.medium"
         case .battery: return "battery.100percent"
         case .processes: return "list.bullet.rectangle"

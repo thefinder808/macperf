@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacPerf - Option B: Mission Control - Overview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --window-bg: #0D0D10;
+    --sidebar-bg: #111114;
+    --card-bg: #16161A;
+    --card-border: #252529;
+    --text-primary: #D4D4D8;
+    --text-secondary: #71717A;
+    --text-tertiary: #52525B;
+    --cpu: #3B82F6;
+    --memory: #8B5CF6;
+    --disk: #22C55E;
+    --network: #F59E0B;
+    --gpu: #06B6D4;
+    --thermal: #EF4444;
+    --status-green: #22C55E;
+    --status-yellow: #EAB308;
+    --status-red: #EF4444;
+    --font-mono: "SF Mono", "Menlo", "Consolas", monospace;
+    --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body {
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: var(--font-system);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .window {
+    width: 1100px;
+    height: 700px;
+    background: var(--window-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.7), 0 0 0 0.5px rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Title bar */
+  .titlebar {
+    height: 38px;
+    background: linear-gradient(180deg, #1E1E22 0%, #18181C 100%);
+    border-bottom: 1px solid #252529;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .traffic-lights {
+    display: flex;
+    gap: 8px;
+  }
+
+  .traffic-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .tl-close { background: #FF5F57; }
+  .tl-minimize { background: #FEBC2E; }
+  .tl-maximize { background: #28C840; }
+
+  .titlebar-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: var(--font-system);
+    font-weight: 500;
+  }
+
+  /* Main layout */
+  .main-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 200px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--card-border);
+    padding: 12px 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    padding: 8px 16px 6px;
+    font-family: var(--font-system);
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .sidebar-item:hover {
+    background: rgba(255,255,255,0.04);
+  }
+
+  .sidebar-item.active {
+    background: rgba(255,255,255,0.06);
+  }
+
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--cpu);
+    border-radius: 1px;
+  }
+
+  .sidebar-item-label {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-family: var(--font-system);
+    font-weight: 400;
+    flex: 1;
+  }
+
+  .sidebar-item.active .sidebar-item-label {
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .sidebar-item-value {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+  }
+
+  .sidebar-gauge {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .sidebar-bottom-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    font-family: var(--font-system);
+    font-weight: 600;
+  }
+
+  .sidebar-bottom-value {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Content */
+  .content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* Health status bar */
+  .health-bar {
+    height: 3px;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .health-segment {
+    flex: 1;
+    transition: background 0.3s;
+  }
+
+  /* Content header */
+  .content-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .content-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    font-family: var(--font-system);
+  }
+
+  .content-sysinfo {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+  }
+
+  /* Card grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 0 20px 20px;
+  }
+
+  .metric-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .metric-card:hover {
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+  }
+
+  .metric-card.cpu::before { background: var(--cpu); }
+  .metric-card.memory::before { background: var(--memory); }
+  .metric-card.gpu::before { background: var(--gpu); }
+  .metric-card.disk::before { background: var(--disk); }
+  .metric-card.network::before { background: var(--network); }
+  .metric-card.thermal::before { background: var(--thermal); }
+  .metric-card.processes::before { background: var(--text-secondary); }
+  .metric-card.storage::before { background: var(--disk); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .card-name {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    font-family: var(--font-system);
+  }
+
+  .card-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-green { background: var(--status-green); box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+  .dot-yellow { background: var(--status-yellow); box-shadow: 0 0 6px rgba(234,179,8,0.4); }
+  .dot-red { background: var(--status-red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+
+  .card-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    line-height: 1.1;
+    margin-bottom: 4px;
+  }
+
+  .card-value.cpu-color { color: var(--cpu); }
+  .card-value.memory-color { color: var(--memory); }
+  .card-value.gpu-color { color: var(--gpu); }
+  .card-value.disk-color { color: var(--disk); }
+  .card-value.network-color { color: var(--network); }
+  .card-value.thermal-color { color: var(--thermal); }
+  .card-value.processes-color { color: var(--text-primary); }
+  .card-value.storage-color { color: var(--disk); }
+
+  .card-subtitle {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .card-sparkline {
+    width: 100%;
+    height: 40px;
+    display: block;
+  }
+
+  /* Scrollbar */
+  .content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .content::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="traffic-lights">
+      <div class="traffic-light tl-close"></div>
+      <div class="traffic-light tl-minimize"></div>
+      <div class="traffic-light tl-maximize"></div>
+    </div>
+    <span class="titlebar-text">MacPerf</span>
+  </div>
+
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section-label">Monitor</div>
+
+      <div class="sidebar-item active" data-category="overview">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-overview"></svg>
+        <span class="sidebar-item-label">Overview</span>
+      </div>
+      <div class="sidebar-item" data-category="cpu">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-cpu"></svg>
+        <span class="sidebar-item-label">CPU</span>
+        <span class="sidebar-item-value">34%</span>
+      </div>
+      <div class="sidebar-item" data-category="memory">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-memory"></svg>
+        <span class="sidebar-item-label">Memory</span>
+        <span class="sidebar-item-value">67%</span>
+      </div>
+      <div class="sidebar-item" data-category="disk">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-disk"></svg>
+        <span class="sidebar-item-label">Disk</span>
+        <span class="sidebar-item-value">12%</span>
+      </div>
+      <div class="sidebar-item" data-category="network">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-network"></svg>
+        <span class="sidebar-item-label">Network</span>
+        <span class="sidebar-item-value">2.4M</span>
+      </div>
+      <div class="sidebar-item" data-category="gpu">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-gpu"></svg>
+        <span class="sidebar-item-label">GPU</span>
+        <span class="sidebar-item-value">28%</span>
+      </div>
+      <div class="sidebar-item" data-category="thermal">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-thermal"></svg>
+        <span class="sidebar-item-label">Thermal</span>
+        <span class="sidebar-item-value">62C</span>
+      </div>
+      <div class="sidebar-item" data-category="processes">
+        <svg class="sidebar-gauge" viewBox="0 0 24 24" id="gauge-processes"></svg>
+        <span class="sidebar-item-label">Processes</span>
+        <span class="sidebar-item-value">347</span>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-bottom-label">Uptime</div>
+        <div class="sidebar-bottom-value">4d 7h 23m</div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Health status bar -->
+      <div class="health-bar" id="healthBar"></div>
+
+      <!-- Content header -->
+      <div class="content-header">
+        <span class="content-title">Overview</span>
+        <span class="content-sysinfo">MacBook Pro M3 Max &middot; macOS 15.2 &middot; 36 GB</span>
+      </div>
+
+      <!-- Card grid -->
+      <div class="card-grid">
+        <!-- CPU -->
+        <div class="metric-card cpu">
+          <div class="card-header">
+            <span class="card-name">CPU</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value cpu-color">34.2%</div>
+          <div class="card-subtitle">12-core &middot; 3.7 GHz</div>
+          <canvas class="card-sparkline" id="spark-cpu"></canvas>
+        </div>
+
+        <!-- Memory -->
+        <div class="metric-card memory">
+          <div class="card-header">
+            <span class="card-name">Memory</span>
+            <span class="card-status-dot dot-yellow"></span>
+          </div>
+          <div class="card-value memory-color">24.1 GB</div>
+          <div class="card-subtitle">67% of 36 GB</div>
+          <canvas class="card-sparkline" id="spark-memory"></canvas>
+        </div>
+
+        <!-- GPU -->
+        <div class="metric-card gpu">
+          <div class="card-header">
+            <span class="card-name">GPU</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value gpu-color">28.5%</div>
+          <div class="card-subtitle">M3 Max 40-core</div>
+          <canvas class="card-sparkline" id="spark-gpu"></canvas>
+        </div>
+
+        <!-- Disk -->
+        <div class="metric-card disk">
+          <div class="card-header">
+            <span class="card-name">Disk I/O</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value disk-color">124 MB/s</div>
+          <div class="card-subtitle">R: 98 &middot; W: 26 MB/s</div>
+          <canvas class="card-sparkline" id="spark-disk"></canvas>
+        </div>
+
+        <!-- Network -->
+        <div class="metric-card network">
+          <div class="card-header">
+            <span class="card-name">Network</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value network-color">2.4 MB/s</div>
+          <div class="card-subtitle">&uarr; 0.8 &middot; &darr; 1.6 MB/s</div>
+          <canvas class="card-sparkline" id="spark-network"></canvas>
+        </div>
+
+        <!-- Thermal -->
+        <div class="metric-card thermal">
+          <div class="card-header">
+            <span class="card-name">Thermal</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value thermal-color">62&deg;C</div>
+          <div class="card-subtitle">Fan: 1840 RPM</div>
+          <canvas class="card-sparkline" id="spark-thermal"></canvas>
+        </div>
+
+        <!-- Processes -->
+        <div class="metric-card processes">
+          <div class="card-header">
+            <span class="card-name">Processes</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value processes-color">347</div>
+          <div class="card-subtitle">12 active &middot; 335 idle</div>
+          <canvas class="card-sparkline" id="spark-processes"></canvas>
+        </div>
+
+        <!-- Storage -->
+        <div class="metric-card storage">
+          <div class="card-header">
+            <span class="card-name">Storage</span>
+            <span class="card-status-dot dot-green"></span>
+          </div>
+          <div class="card-value storage-color">512 GB</div>
+          <div class="card-subtitle">54% of 1 TB used</div>
+          <canvas class="card-sparkline" id="spark-storage"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Sidebar circular gauges ---
+const gaugeData = {
+  'gauge-overview': { pct: 0.45, color: '#3B82F6' },
+  'gauge-cpu': { pct: 0.34, color: '#3B82F6' },
+  'gauge-memory': { pct: 0.67, color: '#8B5CF6' },
+  'gauge-disk': { pct: 0.12, color: '#22C55E' },
+  'gauge-network': { pct: 0.24, color: '#F59E0B' },
+  'gauge-gpu': { pct: 0.28, color: '#06B6D4' },
+  'gauge-thermal': { pct: 0.62, color: '#EF4444' },
+  'gauge-processes': { pct: 0.45, color: '#71717A' },
+};
+
+Object.entries(gaugeData).forEach(([id, { pct, color }]) => {
+  const svg = document.getElementById(id);
+  if (!svg) return;
+  const cx = 12, cy = 12, r = 9, strokeW = 2.5;
+  const circumference = 2 * Math.PI * r;
+  const dashLen = circumference * pct;
+
+  svg.innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#252529" stroke-width="${strokeW}" />
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}"
+      stroke-dasharray="${dashLen} ${circumference - dashLen}"
+      stroke-linecap="round"
+      transform="rotate(-90 ${cx} ${cy})" />
+  `;
+});
+
+// --- Health bar ---
+(function() {
+  const bar = document.getElementById('healthBar');
+  const segments = [
+    '#22C55E','#22C55E','#22C55E','#22C55E','#22C55E',
+    '#22C55E','#22C55E','#EAB308','#22C55E','#22C55E',
+    '#22C55E','#22C55E','#22C55E','#22C55E','#EAB308',
+    '#22C55E','#22C55E','#22C55E','#22C55E','#22C55E',
+  ];
+  segments.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'health-segment';
+    s.style.background = c;
+    bar.appendChild(s);
+  });
+})();
+
+// --- Sparkline charts ---
+function generateMockData(count, min, max, smooth) {
+  const data = [];
+  let val = min + Math.random() * (max - min);
+  for (let i = 0; i < count; i++) {
+    val += (Math.random() - 0.48) * (max - min) * (smooth ? 0.08 : 0.15);
+    val = Math.max(min, Math.min(max, val));
+    data.push(val);
+  }
+  return data;
+}
+
+function drawSparkline(canvasId, data, color, filled) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const w = rect.width;
+  const h = rect.height;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const padY = 2;
+
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - padY - ((v - min) / range) * (h - padY * 2);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  if (filled) {
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, color + '30');
+    grad.addColorStop(1, color + '05');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Redraw the line on top
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - padY - ((v - min) / range) * (h - padY * 2);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+  }
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+const sparkConfigs = [
+  { id: 'spark-cpu',       color: '#3B82F6', min: 20, max: 50 },
+  { id: 'spark-memory',    color: '#8B5CF6', min: 55, max: 75 },
+  { id: 'spark-gpu',       color: '#06B6D4', min: 15, max: 45 },
+  { id: 'spark-disk',      color: '#22C55E', min: 40, max: 180 },
+  { id: 'spark-network',   color: '#F59E0B', min: 0.5, max: 4 },
+  { id: 'spark-thermal',   color: '#EF4444', min: 55, max: 70 },
+  { id: 'spark-processes', color: '#71717A', min: 330, max: 360 },
+  { id: 'spark-storage',   color: '#22C55E', min: 500, max: 540 },
+];
+
+sparkConfigs.forEach(cfg => {
+  const data = generateMockData(50, cfg.min, cfg.max, true);
+  drawSparkline(cfg.id, data, cfg.color, true);
+});
+</script>
+
+</body>
+</html>
