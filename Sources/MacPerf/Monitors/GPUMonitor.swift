@@ -22,6 +22,7 @@ final class GPUMonitor {
 
         defer { IOObjectRelease(iter) }
 
+        var candidates: [Sample] = []
         var entry: io_registry_entry_t = IOIteratorNext(iter)
         while entry != 0 {
             defer {
@@ -46,16 +47,23 @@ final class GPUMonitor {
                         ?? uint64FromStats(perfStats, key: "in use system memory")
                         ?? 0
 
-            return Sample(
+            candidates.append(Sample(
                 deviceUtilization: deviceUtil ?? 0,
                 rendererUtilization: rendererUtil ?? 0,
                 tilerUtilization: tilerUtil ?? 0,
                 allocatedMemory: allocMem,
                 inUseMemory: inUseMem
-            )
+            ))
         }
 
-        return emptySample()
+        guard !candidates.isEmpty else { return emptySample() }
+
+        return candidates.max(by: { a, b in
+            if a.deviceUtilization != b.deviceUtilization {
+                return a.deviceUtilization < b.deviceUtilization
+            }
+            return a.allocatedMemory < b.allocatedMemory
+        })!
     }
 
     private func doubleFromStats(_ stats: [String: Any], key: String) -> Double? {

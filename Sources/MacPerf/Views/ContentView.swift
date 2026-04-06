@@ -48,14 +48,16 @@ struct ContentView: View {
         .frame(minWidth: 900, minHeight: 550)
         .background(WindowAccessor())
         .onChange(of: appState.selectedCategory) {
-            appState.showSettings = false
+            if appState.selectedCategory != nil {
+                appState.showSettings = false
+            }
         }
     }
 
     @ViewBuilder
     private var detailView: some View {
         switch appState.selectedCategory {
-        case .overview:
+        case .overview, nil:
             OverviewView()
         case .cpu:
             CPUDetailView()

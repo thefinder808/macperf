@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 final class AppState: ObservableObject {
-    @Published var selectedCategory: MetricCategory = .overview
+    @Published var selectedCategory: MetricCategory? = .overview
     @Published var selectedTimeRange: TimeRange = .oneMinute
     @Published var showCommandPalette: Bool = false
     @Published var focusProcessSearch: Bool = false

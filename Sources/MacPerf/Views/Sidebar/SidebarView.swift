@@ -29,6 +29,7 @@ struct SidebarView: View {
         .navigationTitle("MacPerf")
         .safeAreaInset(edge: .bottom) {
             Button {
+                appState.selectedCategory = nil
                 appState.showSettings = true
             } label: {
                 Label("Settings", systemImage: "gearshape")
