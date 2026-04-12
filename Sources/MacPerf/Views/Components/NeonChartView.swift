@@ -18,7 +18,7 @@ struct NeonChartView: View {
 
     var body: some View {
         let theme = themeManager.current
-        let chartType = settingsManager.chartType(for: category)
+        let chartType = settingsManager.chartType
 
         switch sizeVariant {
         case .compact:

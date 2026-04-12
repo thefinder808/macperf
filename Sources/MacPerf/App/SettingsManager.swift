@@ -60,7 +60,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable, Hashable {
 final class SettingsManager: ObservableObject {
     private static let metricsKey = "macperf.menuBarMetrics"
     private static let labelModeKey = "macperf.menuBarLabelMode"
-    private static let chartTypesKey = "macperf.chartTypes"
+    private static let chartTypeKey = "macperf.chartType"
 
     @Published var enabledMenuBarMetrics: Set<MenuBarMetric> {
         didSet { save() }
@@ -70,8 +70,8 @@ final class SettingsManager: ObservableObject {
         didSet { UserDefaults.standard.set(useTextLabels, forKey: Self.labelModeKey) }
     }
 
-    @Published var chartTypes: [MetricCategory: ChartType] {
-        didSet { saveChartTypes() }
+    @Published var chartType: ChartType {
+        didSet { UserDefaults.standard.set(chartType.rawValue, forKey: Self.chartTypeKey) }
     }
 
     init() {
@@ -82,17 +82,11 @@ final class SettingsManager: ObservableObject {
             self.enabledMenuBarMetrics = [.cpu, .memory]
         }
         self.useTextLabels = UserDefaults.standard.bool(forKey: Self.labelModeKey)
-        if let saved = UserDefaults.standard.dictionary(forKey: Self.chartTypesKey) as? [String: String] {
-            var types: [MetricCategory: ChartType] = [:]
-            for (key, value) in saved {
-                if let category = MetricCategory(rawValue: key),
-                   let chartType = ChartType(rawValue: value) {
-                    types[category] = chartType
-                }
-            }
-            self.chartTypes = types
+        if let saved = UserDefaults.standard.string(forKey: Self.chartTypeKey),
+           let type = ChartType(rawValue: saved) {
+            self.chartType = type
         } else {
-            self.chartTypes = [:]
+            self.chartType = .line
         }
     }
 
@@ -101,18 +95,9 @@ final class SettingsManager: ObservableObject {
         UserDefaults.standard.set(raw, forKey: Self.metricsKey)
     }
 
-    private func saveChartTypes() {
-        let raw = Dictionary(uniqueKeysWithValues: chartTypes.map { ($0.key.rawValue, $0.value.rawValue) })
-        UserDefaults.standard.set(raw, forKey: Self.chartTypesKey)
-    }
-
     /// Sorted enabled metrics for consistent display order
     var sortedEnabledMetrics: [MenuBarMetric] {
         enabledMenuBarMetrics.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
-    func chartType(for category: MetricCategory) -> ChartType {
-        chartTypes[category] ?? .line
     }
 
     func menuBarLabel(from appState: AppState) -> String {

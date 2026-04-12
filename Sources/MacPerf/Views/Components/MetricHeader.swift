@@ -11,7 +11,7 @@ struct MetricHeader: View {
     var body: some View {
         let theme = themeManager.current
         let accent = theme.accent(for: category)
-        let chartType = settingsManager.chartType(for: category)
+        let chartType = settingsManager.chartType
 
         HStack(alignment: .center, spacing: 16) {
             Image(systemName: category.systemImage)
@@ -40,6 +40,7 @@ struct MetricHeader: View {
                 .shadow(color: theme.glowEnabled ? accent.opacity(0.6) : .clear, radius: 12)
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.3), value: value)
+                .frame(minWidth: 110, alignment: .trailing)
         }
     }
 
@@ -49,7 +50,7 @@ struct MetricHeader: View {
             ForEach(ChartType.allCases) { type in
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        settingsManager.chartTypes[category] = type
+                        settingsManager.chartType = type
                     }
                 } label: {
                     Image(systemName: type.systemImage)
