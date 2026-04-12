@@ -24,7 +24,8 @@ struct MenuBarView: View {
                 label: "CPU",
                 value: Formatters.formatPercentage(appState.cpuUsage, decimals: 1),
                 series: appState.cpuSeries,
-                color: .blue
+                color: .blue,
+                category: .cpu
             )
 
             // Memory
@@ -33,7 +34,8 @@ struct MenuBarView: View {
                 label: "Memory",
                 value: Formatters.formatPercentage(appState.memoryUsage, decimals: 1),
                 series: appState.memorySeries,
-                color: .purple
+                color: .purple,
+                category: .memory
             )
 
             // GPU
@@ -42,7 +44,8 @@ struct MenuBarView: View {
                 label: "GPU",
                 value: Formatters.formatPercentage(appState.gpuUsage, decimals: 1),
                 series: appState.gpuSeries,
-                color: .teal
+                color: .teal,
+                category: .gpu
             )
 
             // Disk
@@ -51,7 +54,8 @@ struct MenuBarView: View {
                 label: "Disk",
                 value: Formatters.formatBytesPerSec(appState.diskReadRate),
                 series: appState.diskReadSeries,
-                color: .green
+                color: .green,
+                category: .disk
             )
 
             // Network
@@ -60,7 +64,8 @@ struct MenuBarView: View {
                 label: "Network",
                 value: Formatters.formatBytesPerSec(appState.networkDownRate),
                 series: appState.networkDownSeries,
-                color: .orange
+                color: .orange,
+                category: .network
             )
 
             // Thermal
@@ -69,7 +74,8 @@ struct MenuBarView: View {
                 label: "Thermal",
                 value: Formatters.formatTemperature(appState.thermalTemp),
                 series: appState.thermalSeries,
-                color: .red
+                color: .red,
+                category: .thermal
             )
 
             Divider()
@@ -90,7 +96,7 @@ struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private func menuBarRow(icon: String, label: String, value: String, series: TimeSeries, color: Color) -> some View {
+    private func menuBarRow(icon: String, label: String, value: String, series: TimeSeries, color: Color, category: MetricCategory) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11))
@@ -101,8 +107,15 @@ struct MenuBarView: View {
                 .font(.system(size: 12))
                 .frame(width: 55, alignment: .leading)
 
-            MiniSparkline(series: series, color: color, pointCount: 30)
-                .frame(width: 50, height: 16)
+            NeonChartView(
+                series: series,
+                color: color,
+                maxValue: 100,
+                timeRange: .oneMinute,
+                category: category,
+                sizeVariant: .compact
+            )
+            .frame(width: 50, height: 16)
 
             Spacer()
 
