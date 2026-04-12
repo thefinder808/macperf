@@ -33,8 +33,15 @@ struct MiniGraphCard: View {
                         .animation(.easeInOut(duration: 0.3), value: valueText)
                 }
 
-                MiniSparkline(series: series, color: accent, pointCount: 60)
-                    .frame(height: 64)
+                NeonChartView(
+                    series: series,
+                    color: accent,
+                    maxValue: 100,
+                    timeRange: .oneMinute,
+                    category: category,
+                    sizeVariant: .compact
+                )
+                .frame(height: 64)
             }
             .padding(16)
             .background(
