@@ -23,6 +23,13 @@ struct NeonTheme: AppTheme {
 
     var glowEnabled: Bool { true }
 
+    var chartGlowRadius: CGFloat { 8 }
+
+    func chartGradientColors(for category: MetricCategory) -> (start: Color, end: Color) {
+        let base = accent(for: category)
+        return (base, Color(red: 1.0, green: 0.0, blue: 1.0)) // accent → magenta
+    }
+
     func accent(for category: MetricCategory) -> Color {
         switch category {
         case .overview: return Color(red: 0.0, green: 0.75, blue: 1.0)

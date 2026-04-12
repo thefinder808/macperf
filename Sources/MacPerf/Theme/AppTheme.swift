@@ -41,6 +41,10 @@ protocol AppTheme {
     func accent(for category: MetricCategory) -> Color
     func accentDim(for category: MetricCategory) -> Color
 
+    // Chart styling
+    var chartGlowRadius: CGFloat { get }
+    func chartGradientColors(for category: MetricCategory) -> (start: Color, end: Color)
+
     // Special
     var glowEnabled: Bool { get }
     var cardShadow: Bool { get }
@@ -49,6 +53,12 @@ protocol AppTheme {
 extension AppTheme {
     func accentDim(for category: MetricCategory) -> Color {
         accent(for: category).opacity(0.15)
+    }
+
+    var chartGlowRadius: CGFloat { 0 }
+
+    func chartGradientColors(for category: MetricCategory) -> (start: Color, end: Color) {
+        (accent(for: category), accent(for: category).opacity(0.5))
     }
 
     var glowEnabled: Bool { false }
