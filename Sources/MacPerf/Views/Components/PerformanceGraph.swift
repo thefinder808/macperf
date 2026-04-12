@@ -196,17 +196,3 @@ struct PerformanceGraph: View {
         }
     }
 }
-
-struct IndexedPoint {
-    let index: Int
-    let value: Double
-}
-
-private func indexedPoints(from series: TimeSeries, range: TimeRange) -> [IndexedPoint] {
-    let points = series.points(for: range)
-    let total = range.seconds
-    let offset = total - points.count
-    return points.enumerated().map { i, point in
-        IndexedPoint(index: offset + i, value: point.value)
-    }
-}
