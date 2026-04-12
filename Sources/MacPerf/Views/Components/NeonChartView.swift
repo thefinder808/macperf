@@ -39,14 +39,6 @@ struct NeonChartView: View {
         Chart {
             ForEach(points, id: \.index) { point in
                 switch chartType {
-                case .line:
-                    LineMark(
-                        x: .value("Time", point.index),
-                        y: .value("Value", point.value)
-                    )
-                    .foregroundStyle(color)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    .interpolationMethod(.catmullRom)
                 case .bar:
                     BarMark(
                         x: .value("Time", point.index),
@@ -105,32 +97,11 @@ struct NeonChartView: View {
             // Primary series
             ForEach(points, id: \.index) { point in
                 switch chartType {
-                case .line:
-                    AreaMark(
-                        x: .value("Time", point.index),
-                        y: .value("Value", point.value)
-                    )
-                    .foregroundStyle(
-                        .linearGradient(
-                            colors: [color.opacity(0.2), color.opacity(0.0)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .interpolationMethod(.catmullRom)
-
-                    LineMark(
-                        x: .value("Time", point.index),
-                        y: .value("Value", point.value)
-                    )
-                    .foregroundStyle(color)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-                    .interpolationMethod(.catmullRom)
-
                 case .bar:
                     BarMark(
                         x: .value("Time", point.index),
-                        y: .value("Value", point.value)
+                        y: .value("Value", point.value),
+                        width: 2
                     )
                     .foregroundStyle(
                         .linearGradient(
@@ -168,7 +139,7 @@ struct NeonChartView: View {
             if !secondaryPoints.isEmpty, let secColor = secondaryColor {
                 ForEach(secondaryPoints, id: \.index) { point in
                     switch chartType {
-                    case .line, .area:
+                    case .area:
                         LineMark(
                             x: .value("Time", point.index),
                             y: .value("Value", point.value),
@@ -180,7 +151,8 @@ struct NeonChartView: View {
                     case .bar:
                         BarMark(
                             x: .value("Time", point.index),
-                            y: .value("Value", point.value)
+                            y: .value("Value", point.value),
+                            width: 2
                         )
                         .foregroundStyle(secColor.opacity(0.6))
                     }

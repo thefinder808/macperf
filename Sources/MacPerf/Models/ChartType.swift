@@ -1,25 +1,22 @@
 import Foundation
 
 enum ChartType: String, CaseIterable, Codable, Identifiable {
-    case line
-    case bar
     case area
+    case bar
 
     var id: String { rawValue }
 
     var systemImage: String {
         switch self {
-        case .line: return "chart.line.uptrend.xyaxis"
-        case .bar: return "chart.bar.fill"
         case .area: return "chart.xyaxis.line"
+        case .bar: return "chart.bar.fill"
         }
     }
 
     var label: String {
         switch self {
-        case .line: return "Line"
-        case .bar: return "Bar"
         case .area: return "Area"
+        case .bar: return "Bar"
         }
     }
 }

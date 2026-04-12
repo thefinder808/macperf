@@ -86,7 +86,7 @@ final class SettingsManager: ObservableObject {
            let type = ChartType(rawValue: saved) {
             self.chartType = type
         } else {
-            self.chartType = .line
+            self.chartType = .area
         }
     }
 
