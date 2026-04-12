@@ -23,11 +23,13 @@ struct GPUDetailView: View {
                     timeRange: $appState.selectedTimeRange
                 )
 
-                PerformanceGraph(
+                NeonChartView(
                     series: gpu.deviceUtilSeries,
                     color: accent,
                     maxValue: 100,
-                    timeRange: appState.selectedTimeRange
+                    timeRange: appState.selectedTimeRange,
+                    category: .gpu,
+                    sizeVariant: .full
                 )
                 .frame(height: 240)
 

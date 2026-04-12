@@ -30,11 +30,13 @@ struct NetworkDetailView: View {
                 }
 
                 // Dual-line graph
-                PerformanceGraph(
+                NeonChartView(
                     series: net.downloadSeries,
                     color: accent,
-                    maxValue: 0, // auto-scale
+                    maxValue: 0,
                     timeRange: appState.selectedTimeRange,
+                    category: .network,
+                    sizeVariant: .full,
                     secondarySeries: net.uploadSeries,
                     secondaryColor: accent.opacity(0.5)
                 )

@@ -30,11 +30,13 @@ struct ThermalDetailView: View {
                 }
 
                 // Dual-line temp graph
-                PerformanceGraph(
+                NeonChartView(
                     series: thermal.cpuTempSeries,
                     color: accent,
                     maxValue: 110,
                     timeRange: appState.selectedTimeRange,
+                    category: .thermal,
+                    sizeVariant: .full,
                     secondarySeries: thermal.gpuTempSeries,
                     secondaryColor: accent.opacity(0.5)
                 )

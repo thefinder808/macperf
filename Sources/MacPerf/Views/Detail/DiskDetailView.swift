@@ -30,11 +30,13 @@ struct DiskDetailView: View {
                 }
 
                 // Dual-line graph
-                PerformanceGraph(
+                NeonChartView(
                     series: disk.readSeries,
                     color: accent,
-                    maxValue: 0, // auto-scale
+                    maxValue: 0,
                     timeRange: appState.selectedTimeRange,
+                    category: .disk,
+                    sizeVariant: .full,
                     secondarySeries: disk.writeSeries,
                     secondaryColor: accent.opacity(0.5)
                 )

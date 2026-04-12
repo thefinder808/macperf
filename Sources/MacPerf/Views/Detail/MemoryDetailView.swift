@@ -26,11 +26,13 @@ struct MemoryDetailView: View {
                 )
 
                 // Main graph — memory usage over time
-                PerformanceGraph(
+                NeonChartView(
                     series: mem.usageSeries,
                     color: accent,
                     maxValue: 100,
-                    timeRange: appState.selectedTimeRange
+                    timeRange: appState.selectedTimeRange,
+                    category: .memory,
+                    sizeVariant: .full
                 )
                 .frame(height: 240)
 
@@ -104,11 +106,13 @@ struct MemoryDetailView: View {
                     .frame(width: 8, height: 8)
             }
 
-            PerformanceGraph(
+            NeonChartView(
                 series: mem.pressureSeries,
                 color: pressureColor,
                 maxValue: 100,
-                timeRange: appState.selectedTimeRange
+                timeRange: appState.selectedTimeRange,
+                category: .memory,
+                sizeVariant: .full
             )
             .frame(height: 120)
 
