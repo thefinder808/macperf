@@ -4,3 +4,4 @@ dist/
 *.pkg
 xcuserdata/
 .DS_Store
+.superpowers/
