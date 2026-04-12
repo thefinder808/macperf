@@ -36,7 +36,7 @@ struct MiniGraphCard: View {
                 NeonChartView(
                     series: series,
                     color: accent,
-                    maxValue: 100,
+                    maxValue: 0,
                     timeRange: .oneMinute,
                     category: category,
                     sizeVariant: .compact

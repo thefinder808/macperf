@@ -110,7 +110,7 @@ struct MenuBarView: View {
             NeonChartView(
                 series: series,
                 color: color,
-                maxValue: 100,
+                maxValue: 0,
                 timeRange: .oneMinute,
                 category: category,
                 sizeVariant: .compact

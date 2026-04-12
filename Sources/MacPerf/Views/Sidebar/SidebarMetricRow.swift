@@ -27,7 +27,7 @@ struct SidebarMetricRow: View {
                     NeonChartView(
                         series: seriesForCategory,
                         color: themeManager.current.accent(for: category),
-                        maxValue: 100,
+                        maxValue: 0,
                         timeRange: .oneMinute,
                         category: category,
                         sizeVariant: .compact
