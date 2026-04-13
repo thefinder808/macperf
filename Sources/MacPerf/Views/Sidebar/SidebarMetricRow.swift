@@ -24,9 +24,13 @@ struct SidebarMetricRow: View {
                 Spacer(minLength: 4)
 
                 if category.isHardwareMonitor {
-                    MiniSparkline(
+                    NeonChartView(
                         series: seriesForCategory,
-                        color: themeManager.current.accent(for: category)
+                        color: themeManager.current.accent(for: category),
+                        maxValue: 0,
+                        timeRange: .oneMinute,
+                        category: category,
+                        sizeVariant: .compact
                     )
                     .frame(width: 72, height: 28)
                 }

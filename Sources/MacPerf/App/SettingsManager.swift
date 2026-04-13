@@ -60,6 +60,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable, Hashable {
 final class SettingsManager: ObservableObject {
     private static let metricsKey = "macperf.menuBarMetrics"
     private static let labelModeKey = "macperf.menuBarLabelMode"
+    private static let chartTypeKey = "macperf.chartType"
 
     @Published var enabledMenuBarMetrics: Set<MenuBarMetric> {
         didSet { save() }
@@ -67,6 +68,10 @@ final class SettingsManager: ObservableObject {
 
     @Published var useTextLabels: Bool {
         didSet { UserDefaults.standard.set(useTextLabels, forKey: Self.labelModeKey) }
+    }
+
+    @Published var chartType: ChartType {
+        didSet { UserDefaults.standard.set(chartType.rawValue, forKey: Self.chartTypeKey) }
     }
 
     init() {
@@ -77,6 +82,12 @@ final class SettingsManager: ObservableObject {
             self.enabledMenuBarMetrics = [.cpu, .memory]
         }
         self.useTextLabels = UserDefaults.standard.bool(forKey: Self.labelModeKey)
+        if let saved = UserDefaults.standard.string(forKey: Self.chartTypeKey),
+           let type = ChartType(rawValue: saved) {
+            self.chartType = type
+        } else {
+            self.chartType = .area
+        }
     }
 
     private func save() {

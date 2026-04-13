@@ -21,6 +21,13 @@ struct DarkTheme: AppTheme {
 
     var trackBackground: Color { Color(red: 0.227, green: 0.227, blue: 0.235) }
 
+    var chartGlowRadius: CGFloat { 0 }
+
+    func chartGradientColors(for category: MetricCategory) -> (start: Color, end: Color) {
+        let base = accent(for: category)
+        return (base, base.opacity(0.6))
+    }
+
     func accent(for category: MetricCategory) -> Color {
         switch category {
         case .overview: return Color(hex: 0x0A84FF)

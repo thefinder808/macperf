@@ -1,65 +1,166 @@
 import SwiftUI
 import Charts
 
-struct PerformanceGraph: View {
+struct NeonChartView: View {
     @ObservedObject var series: TimeSeries
     let color: Color
     let maxValue: Double
     let timeRange: TimeRange
+    let category: MetricCategory
+    let sizeVariant: ChartSizeVariant
 
     var secondarySeries: TimeSeries?
     var secondaryColor: Color?
 
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var scrubIndex: Int?
 
     var body: some View {
         let theme = themeManager.current
+        let chartType = settingsManager.chartType
+
+        switch sizeVariant {
+        case .compact:
+            compactChart(theme: theme, chartType: chartType)
+        case .medium, .full:
+            fullChart(theme: theme, chartType: chartType)
+        }
+    }
+
+    // MARK: - Compact Variant (sparkline replacement)
+
+    @ViewBuilder
+    private func compactChart(theme: any AppTheme, chartType: ChartType) -> some View {
+        let points = indexedPoints(from: series, range: .oneMinute)
+        let gradientColors = theme.chartGradientColors(for: category)
+        let glowRadius = theme.chartGlowRadius
+
+        Chart {
+            ForEach(points, id: \.index) { point in
+                switch chartType {
+                case .bar:
+                    BarMark(
+                        x: .value("Time", point.index),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [gradientColors.start, gradientColors.end],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                case .area:
+                    AreaMark(
+                        x: .value("Time", point.index),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [color.opacity(0.3), color.opacity(0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .interpolationMethod(.catmullRom)
+
+                    LineMark(
+                        x: .value("Time", point.index),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(color)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .interpolationMethod(.catmullRom)
+                }
+            }
+        }
+        .chartXScale(domain: 0...60)
+        .chartYScale(domain: 0...compactMaxValue(points: points))
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartLegend(.hidden)
+        .shadow(color: glowRadius > 0 ? color.opacity(0.4) : .clear, radius: glowRadius / 2)
+    }
+
+    // MARK: - Full Variant (detail view replacement)
+
+    @ViewBuilder
+    private func fullChart(theme: any AppTheme, chartType: ChartType) -> some View {
         let points = indexedPoints(from: series, range: timeRange)
         let secondaryPoints = secondarySeries.map { indexedPoints(from: $0, range: timeRange) } ?? []
         let peakPoint = points.max(by: { $0.value < $1.value })
+        let gradientColors = theme.chartGradientColors(for: category)
+        let glowRadius = theme.chartGlowRadius
 
         Chart {
             // Primary series
             ForEach(points, id: \.index) { point in
-                AreaMark(
-                    x: .value("Time", point.index),
-                    y: .value("Value", point.value)
-                )
-                .foregroundStyle(
-                    .linearGradient(
-                        colors: [color.opacity(0.2), color.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .interpolationMethod(.catmullRom)
-
-                LineMark(
-                    x: .value("Time", point.index),
-                    y: .value("Value", point.value)
-                )
-                .foregroundStyle(color)
-                .lineStyle(StrokeStyle(lineWidth: 2))
-                .interpolationMethod(.catmullRom)
-            }
-
-            // Secondary series (for dual-line graphs like disk read/write)
-            if !secondaryPoints.isEmpty, let secColor = secondaryColor {
-                ForEach(secondaryPoints, id: \.index) { point in
-                    LineMark(
+                switch chartType {
+                case .bar:
+                    BarMark(
                         x: .value("Time", point.index),
                         y: .value("Value", point.value),
-                        series: .value("Series", "secondary")
+                        width: 2
                     )
-                    .foregroundStyle(secColor)
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [gradientColors.start, gradientColors.end],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+
+                case .area:
+                    AreaMark(
+                        x: .value("Time", point.index),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [gradientColors.start.opacity(0.4), gradientColors.end.opacity(0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .interpolationMethod(.catmullRom)
+
+                    LineMark(
+                        x: .value("Time", point.index),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(color)
                     .lineStyle(StrokeStyle(lineWidth: 2))
                     .interpolationMethod(.catmullRom)
                 }
             }
 
-            // Peak marker
-            if let peak = peakPoint, peak.value > 0 {
+            // Secondary series (dual-line graphs: disk read/write, network up/down, thermal CPU/GPU)
+            if !secondaryPoints.isEmpty, let secColor = secondaryColor {
+                ForEach(secondaryPoints, id: \.index) { point in
+                    switch chartType {
+                    case .area:
+                        LineMark(
+                            x: .value("Time", point.index),
+                            y: .value("Value", point.value),
+                            series: .value("Series", "secondary")
+                        )
+                        .foregroundStyle(secColor)
+                        .lineStyle(StrokeStyle(lineWidth: 2))
+                        .interpolationMethod(.catmullRom)
+                    case .bar:
+                        BarMark(
+                            x: .value("Time", point.index),
+                            y: .value("Value", point.value),
+                            width: 2
+                        )
+                        .foregroundStyle(secColor.opacity(0.6))
+                    }
+                }
+            }
+
+            // Peak marker (not shown for bar charts -- clutters the bars)
+            if chartType != .bar, let peak = peakPoint, peak.value > 0 {
                 PointMark(
                     x: .value("Time", peak.index),
                     y: .value("Value", peak.value)
@@ -69,6 +170,7 @@ struct PerformanceGraph: View {
                         .fill(color)
                         .frame(width: 6, height: 6)
                         .rotationEffect(.degrees(45))
+                        .shadow(color: glowRadius > 0 ? color.opacity(0.8) : .clear, radius: glowRadius)
                 }
 
                 RuleMark(y: .value("Peak", peak.value))
@@ -171,11 +273,20 @@ struct PerformanceGraph: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(theme.cardShadow ? .clear : theme.border, lineWidth: 1)
         )
+        .shadow(color: glowRadius > 0 ? color.opacity(0.15) : .clear, radius: glowRadius)
+        .animation(.easeInOut(duration: 0.3), value: chartType)
+    }
+
+    // MARK: - Helpers
+
+    private func compactMaxValue(points: [IndexedPoint]) -> Double {
+        if maxValue > 0 { return maxValue }
+        let peak = points.map(\.value).max() ?? 1
+        return max(peak * 1.2, 1)
     }
 
     private func effectiveMax(points: [IndexedPoint], secondary: [IndexedPoint]) -> Double {
         if maxValue > 0 { return maxValue }
-        // Auto-scale for non-percentage graphs
         let allValues = points.map(\.value) + secondary.map(\.value)
         let peak = allValues.max() ?? 1
         return max(peak * 1.2, 1)
@@ -197,12 +308,14 @@ struct PerformanceGraph: View {
     }
 }
 
+// MARK: - Shared types
+
 struct IndexedPoint {
     let index: Int
     let value: Double
 }
 
-private func indexedPoints(from series: TimeSeries, range: TimeRange) -> [IndexedPoint] {
+func indexedPoints(from series: TimeSeries, range: TimeRange) -> [IndexedPoint] {
     let points = series.points(for: range)
     let total = range.seconds
     let offset = total - points.count

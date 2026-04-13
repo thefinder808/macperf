@@ -25,11 +25,13 @@ struct CPUDetailView: View {
                 )
 
                 // Main graph
-                PerformanceGraph(
+                NeonChartView(
                     series: cpu.overallSeries,
                     color: accent,
                     maxValue: 100,
-                    timeRange: appState.selectedTimeRange
+                    timeRange: appState.selectedTimeRange,
+                    category: .cpu,
+                    sizeVariant: .full
                 )
                 .frame(height: 240)
 

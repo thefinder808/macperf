@@ -24,11 +24,13 @@ struct BatteryDetailView: View {
                 )
 
                 // Charge history graph
-                PerformanceGraph(
+                NeonChartView(
                     series: battery.chargeSeries,
                     color: accent,
                     maxValue: 100,
-                    timeRange: appState.selectedTimeRange
+                    timeRange: appState.selectedTimeRange,
+                    category: .battery,
+                    sizeVariant: .full
                 )
                 .frame(height: 240)
 

@@ -4,7 +4,8 @@ import Combine
 
 final class StatusBarController {
     private var statusItem: NSStatusItem
-    private var popover: NSPopover
+    private var panel: NSPanel
+    private var eventMonitor: Any?
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: AnyCancellable?
 
@@ -18,19 +19,35 @@ final class StatusBarController {
         self.themeManager = themeManager
 
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        self.popover = NSPopover()
 
+        // Use NSPanel instead of NSPopover so it appears over fullscreen apps
         let hostingView = NSHostingController(
             rootView: MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(themeManager)
                 .environmentObject(settingsManager)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
         )
-        popover.contentViewController = hostingView
-        popover.behavior = .transient
+
+        let panel = NSPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: true
+        )
+        panel.contentViewController = hostingView
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        self.panel = panel
 
         if let button = statusItem.button {
-            button.action = #selector(togglePopover(_:))
+            button.action = #selector(togglePanel(_:))
             button.target = self
         }
 
@@ -52,11 +69,9 @@ final class StatusBarController {
         let text = settingsManager.menuBarLabel(from: appState)
 
         if settingsManager.useTextLabels {
-            // Text labels only, no icon
             button.image = nil
             button.title = text
         } else {
-            // Icon + values
             let iconName = settingsManager.sortedEnabledMetrics.first?.systemImage ?? "gauge.medium"
             let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
             image?.size = NSSize(width: 16, height: 16)
@@ -68,11 +83,43 @@ final class StatusBarController {
         button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
     }
 
-    @objc private func togglePopover(_ sender: AnyObject?) {
-        if popover.isShown {
-            popover.performClose(sender)
-        } else if let button = statusItem.button {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    @objc private func togglePanel(_ sender: AnyObject?) {
+        if panel.isVisible {
+            closePanel()
+        } else {
+            openPanel()
+        }
+    }
+
+    private func openPanel() {
+        guard let button = statusItem.button,
+              let buttonWindow = button.window else { return }
+
+        // Size panel to fit its content
+        panel.contentViewController?.view.needsLayout = true
+        panel.contentViewController?.view.layoutSubtreeIfNeeded()
+        let size = panel.contentViewController?.view.fittingSize ?? NSSize(width: 280, height: 400)
+
+        // Position below the status bar button
+        let buttonRect = button.convert(button.bounds, to: nil)
+        let screenRect = buttonWindow.convertToScreen(buttonRect)
+        let x = screenRect.midX - size.width / 2
+        let y = screenRect.minY - size.height - 4
+
+        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        panel.makeKeyAndOrderFront(nil)
+
+        // Dismiss when clicking outside (like transient popover behavior)
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.closePanel()
+        }
+    }
+
+    private func closePanel() {
+        panel.orderOut(nil)
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
         }
     }
 }
