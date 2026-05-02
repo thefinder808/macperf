@@ -1,7 +1,21 @@
 import SwiftUI
+import AppKit
+
+// Runs before the main menu is loaded so we can disable AppKit's automatic
+// window tabbing globally. Doing this later (e.g. inside WindowAccessor's
+// async block) is too late — AppKit has already validated the View menu
+// once with tabs allowed, and the dispatched mutation forces a re-validation
+// that makes "Show Tab Bar" / "Show All Tabs" / "Enter Full Screen" flicker
+// on first menu open.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
+}
 
 @main
 struct MacPerfApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var settingsManager = SettingsManager()

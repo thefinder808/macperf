@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import AppKit
 
 final class AppState: ObservableObject {
     @Published var selectedCategory: MetricCategory? = .overview
@@ -46,18 +47,43 @@ final class AppState: ObservableObject {
     private var vmSubscriptions: Set<AnyCancellable> = []
     private var tick: Int = 0
 
+    // While any NSMenu is being tracked (the macOS menu bar's File/Edit/View
+    // dropdowns, SwiftUI .contextMenu, etc.), suppress forwarded publishes.
+    // Otherwise the App scene's body re-evaluates on every metric tick and
+    // SwiftUI replaces the menu bar's NSMenu, cancelling the user's open
+    // tracking session — items appear briefly then vanish. The next VM tick
+    // after the menu closes refreshes views naturally.
+    private var isMenuTracking = false
+
     init() {
         self.systemInfo = SystemInfo.fetch()
 
-        // Forward child VM changes to trigger our own objectWillChange
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(menuStartedTracking),
+            name: NSMenu.didBeginTrackingNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(menuEndedTracking),
+            name: NSMenu.didEndTrackingNotification, object: nil)
+
+        // Forward child VM changes to trigger our own objectWillChange,
+        // except while a menu is being tracked (see isMenuTracking above).
         let vms: [any ObservableObject] = [cpuVM, memoryVM, diskVM, networkVM, gpuVM, thermalVM, storageVM, batteryVM, processVM]
         for vm in vms {
             (vm.objectWillChange as? ObservableObjectPublisher)?.sink { [weak self] _ in
-                self?.objectWillChange.send()
+                guard let self, !self.isMenuTracking else { return }
+                self.objectWillChange.send()
             }.store(in: &vmSubscriptions)
         }
 
         startTimer()
+    }
+
+    @objc private func menuStartedTracking(_ note: Notification) {
+        isMenuTracking = true
+    }
+
+    @objc private func menuEndedTracking(_ note: Notification) {
+        isMenuTracking = false
     }
 
     deinit {
