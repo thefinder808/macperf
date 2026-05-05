@@ -65,20 +65,12 @@ final class MemoryMonitor {
         // for its gauge color and what DispatchSource.makeMemoryPressureSource fires on.
         let level = readKernelPressureLevel()
 
-        // Continuous gauge value, band-anchored to the kernel level so the gauge's
-        // color thresholds (green <50, yellow 50–75, red ≥75 in PressureGauge) stay
-        // in sync with `level`. Within each band, motion is driven by compression
-        // and swap activity for a smooth animation.
-        let compressedRatio = totalRAM > 0 ? Double(compressed) / Double(totalRAM) : 0
-        let swapRatio = totalRAM > 0 ? Double(swapUsed) / Double(totalRAM) : 0
-        let activity = compressedRatio + swapRatio
-        let pressure: Double = {
-            switch level {
-            case .normal:   return min(49.5, activity * 200)
-            case .warning:  return 50 + min(24.5, activity * 80)
-            case .critical: return 75 + min(25, activity * 60)
-            }
-        }()
+        // Gauge value: fraction of RAM that has been displaced (compressed or
+        // paged to swap). A concrete measurement, not a band-anchored fake.
+        // Color comes from `level` in the view; the value stands on its own.
+        let pressure = totalRAM > 0
+            ? min(100, Double(compressed + swapUsed) / Double(totalRAM) * 100)
+            : 0
 
         return Sample(
             totalBytes: totalRAM,
