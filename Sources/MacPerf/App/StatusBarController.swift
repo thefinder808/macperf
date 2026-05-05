@@ -66,21 +66,49 @@ final class StatusBarController {
     private func updateLabel() {
         guard let button = statusItem.button else { return }
 
-        let text = settingsManager.menuBarLabel(from: appState)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        button.font = font
 
         if settingsManager.useTextLabels {
             button.image = nil
-            button.title = text
-        } else {
-            let iconName = settingsManager.sortedEnabledMetrics.first?.systemImage ?? "gauge.medium"
-            let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+            button.attributedTitle = NSAttributedString()
+            button.title = settingsManager.menuBarLabel(from: appState)
+            return
+        }
+
+        let metrics = settingsManager.sortedEnabledMetrics
+        guard !metrics.isEmpty else {
+            let image = NSImage(systemSymbolName: "gauge.medium", accessibilityDescription: nil)
+            image?.isTemplate = true
             image?.size = NSSize(width: 16, height: 16)
             button.image = image
             button.imagePosition = .imageLeading
-            button.title = " \(text)"
+            button.attributedTitle = NSAttributedString()
+            button.title = " —"
+            return
         }
 
-        button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        button.image = nil
+        button.imagePosition = .noImage
+
+        let composed = NSMutableAttributedString()
+        for (i, metric) in metrics.enumerated() {
+            if i > 0 {
+                composed.append(NSAttributedString(string: "  ", attributes: [.font: font]))
+            }
+            if let symbol = NSImage(systemSymbolName: metric.systemImage, accessibilityDescription: metric.rawValue) {
+                symbol.isTemplate = true
+                let attachment = NSTextAttachment()
+                attachment.image = symbol
+                attachment.bounds = NSRect(x: 0, y: -3, width: 14, height: 14)
+                composed.append(NSAttributedString(attachment: attachment))
+            }
+            composed.append(NSAttributedString(
+                string: " " + metric.formatValue(from: appState),
+                attributes: [.font: font]
+            ))
+        }
+        button.attributedTitle = composed
     }
 
     @objc private func togglePanel(_ sender: AnyObject?) {
