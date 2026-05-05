@@ -61,26 +61,24 @@ final class MemoryMonitor {
         // Swap usage via sysctl
         let swapUsed = readSwapUsage()
 
-        // Memory pressure reflects how hard the system is working to free memory.
-        // Compression and swap are the key signals — having allocated memory is
-        // not pressure if the system isn't compressing or swapping.
+        // Pressure level comes from the kernel — same signal Activity Monitor uses
+        // for its gauge color and what DispatchSource.makeMemoryPressureSource fires on.
+        let level = readKernelPressureLevel()
+
+        // Continuous gauge value, band-anchored to the kernel level so the gauge's
+        // color thresholds (green <50, yellow 50–75, red ≥75 in PressureGauge) stay
+        // in sync with `level`. Within each band, motion is driven by compression
+        // and swap activity for a smooth animation.
         let compressedRatio = totalRAM > 0 ? Double(compressed) / Double(totalRAM) : 0
         let swapRatio = totalRAM > 0 ? Double(swapUsed) / Double(totalRAM) : 0
-
-        let pressure = min(100, max(0,
-            compressedRatio * 120             // compression is the primary pressure signal
-            + swapRatio * 250                 // swap usage is a strong pressure signal
-        ))
-
-        // Determine pressure level
-        let level: PressureLevel
-        if pressure > 80 {
-            level = .critical
-        } else if pressure > 40 {
-            level = .warning
-        } else {
-            level = .normal
-        }
+        let activity = compressedRatio + swapRatio
+        let pressure: Double = {
+            switch level {
+            case .normal:   return min(49.5, activity * 200)
+            case .warning:  return 50 + min(24.5, activity * 80)
+            case .critical: return 75 + min(25, activity * 60)
+            }
+        }()
 
         return Sample(
             totalBytes: totalRAM,
@@ -102,6 +100,19 @@ final class MemoryMonitor {
         let result = sysctlbyname("vm.swapusage", &swapUsage, &size, nil, 0)
         guard result == 0 else { return 0 }
         return swapUsage.xsu_used
+    }
+
+    private func readKernelPressureLevel() -> PressureLevel {
+        // Values match DISPATCH_MEMORYPRESSURE_*: 1=NORMAL, 2=WARN, 4=CRITICAL.
+        var raw: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        let result = sysctlbyname("kern.memorystatus_vm_pressure_level", &raw, &size, nil, 0)
+        guard result == 0 else { return .normal }
+        switch raw {
+        case 4: return .critical
+        case 2: return .warning
+        default: return .normal
+        }
     }
 
     private func emptySample() -> Sample {
