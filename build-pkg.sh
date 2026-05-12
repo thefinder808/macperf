@@ -11,27 +11,33 @@ APP_BUNDLE="${DIST_DIR}/${APP_NAME}.app"
 PKG_UNSIGNED="${DIST_DIR}/${APP_NAME}-unsigned.pkg"
 PKG_SIGNED="${DIST_DIR}/${APP_NAME}-${VERSION}.pkg"
 
-# Code signing identity — set these when you have an Apple Developer ID
-# Leave empty to skip signing/notarization (local dev builds)
-SIGN_APP="${MACPERF_SIGN_APP:-}"           # "Developer ID Application: Your Name (TEAMID)"
-SIGN_INSTALLER="${MACPERF_SIGN_PKG:-}"     # "Developer ID Installer: Your Name (TEAMID)"
-APPLE_ID="${MACPERF_APPLE_ID:-}"           # your@email.com
-TEAM_ID="${MACPERF_TEAM_ID:-}"             # 10-char team ID
-APP_PASSWORD="${MACPERF_APP_PASSWORD:-}"   # app-specific password from appleid.apple.com
+# ─── Code signing config ─────────────────────────────────────────────────────
+# Notary credentials live in the macOS keychain as a named profile, not in
+# environment variables. One-time setup:
+#   xcrun notarytool store-credentials macperf-notary
+# (prompts interactively for Apple ID, Team ID, app-specific password)
+NOTARY_PROFILE="${MACPERF_NOTARY_PROFILE:-macperf-notary}"
+
+# Signing identities are auto-detected from the keychain. Override with the
+# MACPERF_SIGN_APP / MACPERF_SIGN_PKG env vars if you have multiple Developer
+# IDs and need to pick a specific one.
+SIGN_APP="${MACPERF_SIGN_APP:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Developer ID Application/ {print $2; exit}')}"
+SIGN_INSTALLER="${MACPERF_SIGN_PKG:-$(security find-identity -v -p basic 2>/dev/null | awk -F'"' '/Developer ID Installer/ {print $2; exit}')}"
 
 # ─── Signing pre-flight ──────────────────────────────────────────────────────
 # Refuse to silently build an unsigned pkg. For a local dev build without
 # signing, set MACPERF_UNSIGNED=1 explicitly.
 if [ -z "${MACPERF_UNSIGNED:-}" ]; then
-    missing=()
-    [ -z "${SIGN_APP}" ]        && missing+=("MACPERF_SIGN_APP")
-    [ -z "${SIGN_INSTALLER}" ]  && missing+=("MACPERF_SIGN_PKG")
-    [ -z "${APPLE_ID}" ]        && missing+=("MACPERF_APPLE_ID")
-    [ -z "${TEAM_ID}" ]         && missing+=("MACPERF_TEAM_ID")
-    [ -z "${APP_PASSWORD}" ]    && missing+=("MACPERF_APP_PASSWORD")
-    if [ "${#missing[@]}" -gt 0 ]; then
-        echo "error: signing env vars not set: ${missing[*]}" >&2
-        echo "       export them for a release build, or set MACPERF_UNSIGNED=1 for a local dev build." >&2
+    problems=()
+    [ -z "${SIGN_APP}" ]       && problems+=("no 'Developer ID Application' identity in keychain")
+    [ -z "${SIGN_INSTALLER}" ] && problems+=("no 'Developer ID Installer' identity in keychain")
+    if ! xcrun notarytool history --keychain-profile "${NOTARY_PROFILE}" >/dev/null 2>&1; then
+        problems+=("notary keychain profile '${NOTARY_PROFILE}' missing — run: xcrun notarytool store-credentials ${NOTARY_PROFILE}")
+    fi
+    if [ "${#problems[@]}" -gt 0 ]; then
+        echo "error: signing prerequisites not met:" >&2
+        for p in "${problems[@]}"; do echo "       - $p" >&2; done
+        echo "       (set MACPERF_UNSIGNED=1 for a local dev build instead)" >&2
         exit 1
     fi
 fi
@@ -108,7 +114,7 @@ echo "Verifying app bundle..."
 [ -f "${APP_BUNDLE}/Contents/Info.plist" ] && echo "  Info.plist: OK" || { echo "  Info.plist: MISSING"; exit 1; }
 
 # ─── Code Signing ────────────────────────────────────────────────────────────
-if [ -n "${SIGN_APP}" ]; then
+if [ -z "${MACPERF_UNSIGNED:-}" ]; then
     echo ""
     echo "Signing app bundle..."
     codesign --deep --force --options runtime \
@@ -132,13 +138,7 @@ ENTITLEMENTS
     echo "  Signature: OK"
 else
     echo ""
-    echo "Skipping code signing (no MACPERF_SIGN_APP set)"
-    echo "  To enable, export these env vars before running:"
-    echo "    export MACPERF_SIGN_APP=\"Developer ID Application: Your Name (TEAMID)\""
-    echo "    export MACPERF_SIGN_PKG=\"Developer ID Installer: Your Name (TEAMID)\""
-    echo "    export MACPERF_APPLE_ID=\"you@email.com\""
-    echo "    export MACPERF_TEAM_ID=\"TEAMID\""
-    echo "    export MACPERF_APP_PASSWORD=\"xxxx-xxxx-xxxx-xxxx\""
+    echo "Skipping code signing (MACPERF_UNSIGNED=1 — local dev build)"
 fi
 
 # ─── Build .pkg ──────────────────────────────────────────────────────────────
@@ -200,13 +200,11 @@ else
 fi
 
 # ─── Notarize ────────────────────────────────────────────────────────────────
-if [ -n "${SIGN_APP}" ] && [ -n "${APPLE_ID}" ] && [ -n "${TEAM_ID}" ] && [ -n "${APP_PASSWORD}" ]; then
+if [ -z "${MACPERF_UNSIGNED:-}" ]; then
     echo ""
-    echo "Submitting for notarization..."
+    echo "Submitting for notarization (profile: ${NOTARY_PROFILE})..."
     xcrun notarytool submit "${PKG_SIGNED}" \
-        --apple-id "${APPLE_ID}" \
-        --team-id "${TEAM_ID}" \
-        --password "${APP_PASSWORD}" \
+        --keychain-profile "${NOTARY_PROFILE}" \
         --wait
 
     echo "Stapling notarization ticket..."
@@ -217,7 +215,7 @@ if [ -n "${SIGN_APP}" ] && [ -n "${APPLE_ID}" ] && [ -n "${TEAM_ID}" ] && [ -n "
     echo "  Notarization: OK"
 else
     echo ""
-    echo "Skipping notarization (credentials not set)"
+    echo "Skipping notarization (MACPERF_UNSIGNED=1)"
 fi
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
@@ -227,11 +225,11 @@ echo "  App bundle: $(pwd)/${APP_BUNDLE}"
 echo "  Installer:  $(pwd)/${PKG_SIGNED}"
 echo "  App size:   $(du -sh "${APP_BUNDLE}" | cut -f1)"
 echo "  Pkg size:   $(du -sh "${PKG_SIGNED}" | cut -f1)"
-if [ -n "${SIGN_APP}" ]; then
+if [ -z "${MACPERF_UNSIGNED:-}" ]; then
     echo "  Signed:     YES"
-    echo "  Notarized:  $([ -n "${APPLE_ID}" ] && echo 'YES' || echo 'NO')"
+    echo "  Notarized:  YES"
 else
-    echo "  Signed:     NO (local dev build)"
+    echo "  Signed:     NO (MACPERF_UNSIGNED=1 dev build)"
 fi
 echo ""
 echo "To install pkg:     open ${PKG_SIGNED}"
@@ -239,7 +237,7 @@ echo "To run directly:    open ${APP_BUNDLE}"
 echo ""
 
 # ─── Local install option (for unsigned builds) ─────────────────────────────
-if [ -z "${SIGN_APP}" ]; then
+if [ -n "${MACPERF_UNSIGNED:-}" ]; then
     read -p "Install directly to /Applications? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
