@@ -19,6 +19,23 @@ APPLE_ID="${MACPERF_APPLE_ID:-}"           # your@email.com
 TEAM_ID="${MACPERF_TEAM_ID:-}"             # 10-char team ID
 APP_PASSWORD="${MACPERF_APP_PASSWORD:-}"   # app-specific password from appleid.apple.com
 
+# ─── Signing pre-flight ──────────────────────────────────────────────────────
+# Refuse to silently build an unsigned pkg. For a local dev build without
+# signing, set MACPERF_UNSIGNED=1 explicitly.
+if [ -z "${MACPERF_UNSIGNED:-}" ]; then
+    missing=()
+    [ -z "${SIGN_APP}" ]        && missing+=("MACPERF_SIGN_APP")
+    [ -z "${SIGN_INSTALLER}" ]  && missing+=("MACPERF_SIGN_PKG")
+    [ -z "${APPLE_ID}" ]        && missing+=("MACPERF_APPLE_ID")
+    [ -z "${TEAM_ID}" ]         && missing+=("MACPERF_TEAM_ID")
+    [ -z "${APP_PASSWORD}" ]    && missing+=("MACPERF_APP_PASSWORD")
+    if [ "${#missing[@]}" -gt 0 ]; then
+        echo "error: signing env vars not set: ${missing[*]}" >&2
+        echo "       export them for a release build, or set MACPERF_UNSIGNED=1 for a local dev build." >&2
+        exit 1
+    fi
+fi
+
 # ─── Build ───────────────────────────────────────────────────────────────────
 echo "=== Building ${APP_NAME} v${VERSION} ==="
 
