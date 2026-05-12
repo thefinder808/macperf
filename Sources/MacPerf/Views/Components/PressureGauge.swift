@@ -27,25 +27,11 @@ struct PressureGauge: View {
                     arcPath(center: center, radius: radius, from: 0, to: 1)
                         .stroke(theme.trackBackground, style: StrokeStyle(lineWidth: max(6, radius * 0.16), lineCap: .round))
 
-                    // Green segment (0-50%)
+                    // Filled arc — colored by kernel-reported pressure level, not by value bands.
                     if animatedValue > 0 {
-                        arcPath(center: center, radius: radius, from: 0, to: min(animatedValue / 100, 0.5))
-                            .stroke(Color.green, style: StrokeStyle(lineWidth: max(6, radius * 0.16), lineCap: .round))
-                            .shadow(color: theme.glowEnabled ? .green.opacity(0.5) : .clear, radius: 6)
-                    }
-
-                    // Yellow segment (50-75%)
-                    if animatedValue > 50 {
-                        arcPath(center: center, radius: radius, from: 0.5, to: min(animatedValue / 100, 0.75))
-                            .stroke(Color.yellow, style: StrokeStyle(lineWidth: max(6, radius * 0.16), lineCap: .round))
-                            .shadow(color: theme.glowEnabled ? .yellow.opacity(0.5) : .clear, radius: 6)
-                    }
-
-                    // Red segment (75-100%)
-                    if animatedValue > 75 {
-                        arcPath(center: center, radius: radius, from: 0.75, to: min(animatedValue / 100, 1.0))
-                            .stroke(Color.red, style: StrokeStyle(lineWidth: max(6, radius * 0.16), lineCap: .round))
-                            .shadow(color: theme.glowEnabled ? .red.opacity(0.5) : .clear, radius: 6)
+                        arcPath(center: center, radius: radius, from: 0, to: min(animatedValue / 100, 1.0))
+                            .stroke(levelColor, style: StrokeStyle(lineWidth: max(6, radius * 0.16), lineCap: .round))
+                            .shadow(color: theme.glowEnabled ? levelColor.opacity(0.5) : .clear, radius: 6)
                     }
 
                     // Needle
