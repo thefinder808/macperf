@@ -14,6 +14,22 @@ Real-time graphs and metrics for CPU, memory, disk, network, GPU, and thermals â
 
 </div>
 
+## Screenshots
+
+<!--
+  Drop images into docs/screenshots/, then replace the placeholder line below with this markup.
+  Suggested shots: the main dashboard, a detail view (e.g. CPU per-core), and the menu bar dropdown.
+
+  <p align="center">
+    <img src="docs/screenshots/dashboard.png" alt="MacPerf dashboard" width="820" />
+  </p>
+  <p align="center">
+    <img src="docs/screenshots/menu-bar.png" alt="MacPerf menu bar dropdown" width="360" />
+  </p>
+-->
+
+_Screenshots coming soon._
+
 ## Features
 
 - **CPU** â€” Per-core utilization, system / user / idle breakdown

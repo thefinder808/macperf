@@ -5,3 +5,4 @@ dist/
 xcuserdata/
 .DS_Store
 .superpowers/
+.claude/worktrees/
