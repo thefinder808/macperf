@@ -127,8 +127,6 @@ if [ -z "${MACPERF_UNSIGNED:-}" ]; then
 <dict>
     <key>com.apple.security.app-sandbox</key>
     <false/>
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
 </dict>
 </plist>
 ENTITLEMENTS
