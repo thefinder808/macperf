@@ -14,6 +14,36 @@ Real-time graphs and metrics for CPU, memory, disk, network, GPU, and thermals �
 
 </div>
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="MacPerf overview dashboard" width="860" />
+  <br /><em>Real-time overview dashboard (Dark theme)</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/demo.gif" alt="MacPerf live demo" width="860" />
+  <br /><em>Live, continuously-updating metrics</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/cpu-view.png" alt="CPU detail view" width="270" />
+  <img src="docs/screenshots/gpu-view.png" alt="GPU detail view" width="270" />
+  <img src="docs/screenshots/disk-view.png" alt="Disk detail view" width="270" />
+  <br /><em>Per-metric detail views — CPU, GPU, Disk</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/overview-light.png" alt="Overview in Light theme" width="410" />
+  <img src="docs/screenshots/settings-light.png" alt="Settings" width="410" />
+  <br /><em>Light theme and settings</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/statusbar.png" alt="Menu bar metrics" />
+  <br /><em>At-a-glance metrics in the menu bar</em>
+</p>
+
 ## Features
 
 - **CPU** — Per-core utilization, system / user / idle breakdown
