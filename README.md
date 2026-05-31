@@ -66,7 +66,7 @@ Real-time graphs and metrics for CPU, memory, disk, network, GPU, and thermals â
 
 ## Install
 
-Download the latest signed and notarized installer from the [Releases page](https://github.com/thefinder808/macperf/releases/latest), open the `.pkg`, and follow the installer.
+Download the latest signed and notarized `.dmg` from the [Releases page](https://github.com/thefinder808/macperf/releases/latest), open it, and drag **MacPerf** into your Applications folder.
 
 ## Build from source
 
@@ -77,24 +77,19 @@ swift run MacPerf
 
 Requires Swift 5.9+.
 
-## Build the installer
+## Build the disk image
 
 ```bash
-chmod +x build-pkg.sh
-./build-pkg.sh
+./build-dmg.sh
 ```
 
-Produces `dist/MacPerf.app` and a `.pkg` in `dist/`. To produce a signed and notarized package, set the following environment variables before running:
+Produces a signed, notarized, and stapled `dist/MacPerf-<version>.dmg`. Signing uses your **Developer ID Application** identity (auto-detected from the keychain); notarization uses a credential profile stored in the keychain via a one-time setup:
 
 ```bash
-export MACPERF_SIGN_APP="Developer ID Application: Your Name (TEAMID)"
-export MACPERF_SIGN_PKG="Developer ID Installer: Your Name (TEAMID)"
-export MACPERF_APPLE_ID="you@example.com"
-export MACPERF_TEAM_ID="TEAMID"
-export MACPERF_APP_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # app-specific password
+xcrun notarytool store-credentials macperf-notary
 ```
 
-Without these set, the script produces an unsigned local build.
+For an unsigned local build, run `MACPERF_UNSIGNED=1 ./build-dmg.sh`.
 
 ## License
 
