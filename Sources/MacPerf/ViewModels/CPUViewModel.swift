@@ -14,7 +14,9 @@ final class CPUViewModel: ObservableObject {
     @Published var idleUsage: Double = 100
     @Published var perCoreUsages: [Double] = []
 
-    func update() {
+    /// `appendHistory: false` updates the live values for the menu bar but skips
+    /// the chart series — used when the window is hidden so charts don't re-render.
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         overallUsage = sample.overallUsage
         userUsage = sample.userUsage
@@ -22,6 +24,7 @@ final class CPUViewModel: ObservableObject {
         idleUsage = sample.idleUsage
         perCoreUsages = sample.perCoreUsages
 
+        guard appendHistory else { return }
         overallSeries.append(sample.overallUsage)
         userSeries.append(sample.userUsage)
         systemSeries.append(sample.systemUsage)

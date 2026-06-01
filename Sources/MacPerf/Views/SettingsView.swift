@@ -73,6 +73,39 @@ struct SettingsView: View {
                     }
                 }
 
+                // Sampling section
+                settingsSection(title: "Sampling", icon: "timer") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 0) {
+                            Image(systemName: "speedometer")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.secondaryText)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Update interval")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.primaryText)
+
+                            Spacer()
+
+                            Picker("", selection: $appState.samplingInterval) {
+                                Text("1s").tag(1.0)
+                                Text("2s").tag(2.0)
+                                Text("5s").tag(5.0)
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .frame(width: 150)
+                        }
+                        .padding(.vertical, 4)
+
+                        Text("Lower frequency uses less battery. Charts and the menu bar refresh at this rate.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(theme.secondaryText)
+                            .padding(.leading, 28)
+                    }
+                }
+
             }
             .padding(32)
         }

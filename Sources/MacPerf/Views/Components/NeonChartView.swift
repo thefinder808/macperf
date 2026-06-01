@@ -80,6 +80,9 @@ struct NeonChartView: View {
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
+        // Live sparklines aren't VoiceOver-navigable; opting out skips Swift Charts'
+        // per-redraw accessibility-data generation (a real cost at 1 Hz updates).
+        .accessibilityHidden(true)
         .shadow(color: glowRadius > 0 ? color.opacity(0.4) : .clear, radius: glowRadius / 2)
     }
 
@@ -275,6 +278,7 @@ struct NeonChartView: View {
         )
         .shadow(color: glowRadius > 0 ? color.opacity(0.15) : .clear, radius: glowRadius)
         .animation(.easeInOut(duration: 0.3), value: chartType)
+        .accessibilityHidden(true)
     }
 
     // MARK: - Helpers

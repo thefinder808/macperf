@@ -5,6 +5,7 @@ struct PressureGauge: View {
     let level: MemoryMonitor.PressureLevel
 
     @EnvironmentObject var themeManager: ThemeManager
+    @Environment(\.controlActiveState) private var controlActiveState
     @State private var animatedValue: Double = 0
     @State private var glowRadius: CGFloat = 4
 
@@ -66,15 +67,26 @@ struct PressureGauge: View {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.6)) {
                 animatedValue = value
             }
-            if themeManager.current.glowEnabled {
-                withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                    glowRadius = 8
-                }
-            }
+            syncGlow()
         }
+        .onChange(of: controlActiveState) { _, _ in syncGlow() }
         .onChange(of: value) { _, newValue in
             withAnimation(.spring(response: 0.8, dampingFraction: 0.6)) {
                 animatedValue = newValue
+            }
+        }
+    }
+
+    /// Pulses the needle glow only while the app is focused (neon theme only).
+    private func syncGlow() {
+        guard themeManager.current.glowEnabled else { return }
+        if controlActiveState != .inactive {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                glowRadius = 8
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                glowRadius = 4
             }
         }
     }

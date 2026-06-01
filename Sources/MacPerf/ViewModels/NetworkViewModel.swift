@@ -13,7 +13,7 @@ final class NetworkViewModel: ObservableObject {
     @Published var totalUploaded: UInt64 = 0
     @Published var activeInterface: String = "—"
 
-    func update() {
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         downloadBytesPerSec = sample.downloadBytesPerSec
         uploadBytesPerSec = sample.uploadBytesPerSec
@@ -21,6 +21,7 @@ final class NetworkViewModel: ObservableObject {
         totalUploaded = sample.totalUploaded
         activeInterface = sample.activeInterface
 
+        guard appendHistory else { return }
         downloadSeries.append(sample.downloadBytesPerSec)
         uploadSeries.append(sample.uploadBytesPerSec)
     }

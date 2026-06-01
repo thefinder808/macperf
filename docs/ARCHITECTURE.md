@@ -1,0 +1,73 @@
+# MacPerf Architecture
+
+A native macOS system monitor (SwiftUI + AppKit, SwiftPM). This document focuses on
+the runtime data-flow and the **efficiency model**, since several behaviors there are
+deliberate and easy to regress.
+
+## Layers
+
+- **Monitors** (`Sources/MacPerf/Monitors/`) — stateless-ish samplers over Mach /
+  `sysctl` / IOKit / SMC. Each `sample()` returns a snapshot struct. No timers, no
+  published state. Cheap counters (CPU, memory, disk, network, GPU); process
+  enumeration (`ProcessMonitor`) is the heaviest.
+- **View models** (`Sources/MacPerf/ViewModels/`) — one `ObservableObject` per metric.
+  Each `update()` reads its monitor, publishes scalar `@Published` values, and appends
+  to its `TimeSeries` chart buffers.
+- **`AppState`** (`Sources/MacPerf/App/AppState.swift`) — owns all view models, the
+  single master timer, and the navigation/UI state. It is the update orchestrator.
+- **Views** (`Sources/MacPerf/Views/`) — SwiftUI. Charts are `NeonChartView`
+  (Swift Charts) observing a `TimeSeries` directly.
+- **`StatusBarController`** — the menu-bar `NSStatusItem` + dropdown `NSPanel`.
+
+## Update cycle
+
+A single `Timer.publish(every: samplingInterval …)` in `AppState.startTimer()` drives
+everything; `update()` staggers work by tick count (cheap counters every tick,
+processes every 2, thermal/storage/battery every 5). `samplingInterval` (1/2/5 s) is
+user-configurable in Settings and persisted to `UserDefaults`; changing it restarts the
+timer.
+
+View models forward their `objectWillChange` into `AppState.objectWillChange` (the
+"fan-in") so views observing `AppState` refresh each tick.
+
+## Efficiency model (read before changing the update path)
+
+MacPerf is a long-running, mostly-background app, so **doing no work when nothing is
+visible** is the core performance property. Invariants:
+
+1. **Menu-bar icons are cached.** `StatusBarController` caches its SF Symbol `NSImage`s
+   and font once and dedups by rendered string. Recreating `NSImage(systemSymbolName:)`
+   every tick re-parses the symbol's SVG and **leaks CoreSVG allocations** — this was
+   the cause of multi-GB RSS growth over days. Do not recreate symbols per refresh.
+
+2. **Visibility gating.** `AppState.isWindowVisible` is recomputed from
+   `NSApp.isHidden`, `NSApp.occlusionState`, and window state (titled, on-screen,
+   not minimized). It is false when the app is hidden (`Cmd-H`), minimized, fully
+   occluded, or its window is closed.
+
+3. **Idle when not visible.** When `!isWindowVisible`, `update()` takes a lightweight
+   branch: it refreshes only the menu-bar metric *scalars* (`update(appendHistory:
+   false)` — skips `TimeSeries` appends so charts don't re-render) and calls
+   `menuBarRefresh`. It also **suppresses the fan-in** so SwiftUI doesn't re-evaluate /
+   re-draw the off-screen window. Result: ~0 % CPU and minimal RSS while backgrounded.
+   On becoming visible again, `recomputeWindowVisibility()` sends one `objectWillChange`
+   to refresh the now-visible UI.
+
+4. **The status item stays live while hidden** via `AppState.menuBarRefresh`, a closure
+   `StatusBarController` sets to `updateLabel()`. The menu bar updates through this hook
+   every tick — *independent of the suppressed fan-in* — so hiding the app does not
+   freeze the menu-bar numbers. (Do not route the menu bar back through
+   `appState.objectWillChange`, or it will go stale while hidden.)
+
+5. **Process enumeration is gated** behind `needsProcessData` (Processes tab visible, or
+   the menu panel / command palette open) — it's the heaviest sample and is invisible
+   otherwise. It refreshes immediately when a process view appears.
+
+6. **Continuous animations** (`OverviewView` live-pulse, `PressureGauge` glow) run only
+   while the app is the active app (`controlActiveState`), and charts opt out of
+   Swift Charts' per-redraw accessibility-data generation (`.accessibilityHidden(true)`).
+
+## Data retention
+
+`TimeSeries` is a ring buffer capped at 3600 points (1 h at 1 s). Per-process CPU
+sparkline history is capped at 60 samples and pruned for dead PIDs. Memory is bounded.

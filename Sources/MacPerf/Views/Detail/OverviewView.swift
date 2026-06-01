@@ -3,7 +3,9 @@ import SwiftUI
 struct OverviewView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: ThemeManager
+    @Environment(\.controlActiveState) private var controlActiveState
     @State private var cardsAppeared = false
+    @State private var pulsing = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -38,13 +40,13 @@ struct OverviewView: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(themeManager.current.primaryText)
 
-                    // Live pulse dot
+                    // Live pulse dot — only animates while the app is focused, so it
+                    // doesn't drive continuous redraws when you're working elsewhere.
                     Circle()
                         .fill(.green)
                         .frame(width: 6, height: 6)
-                        .scaleEffect(cardsAppeared ? 1.3 : 1.0)
-                        .opacity(cardsAppeared ? 0.7 : 1.0)
-                        .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: cardsAppeared)
+                        .scaleEffect(pulsing ? 1.3 : 1.0)
+                        .opacity(pulsing ? 0.7 : 1.0)
 
                     Spacer()
                     Text(appState.systemInfo.cpuModel)
@@ -86,6 +88,21 @@ struct OverviewView: View {
             withAnimation {
                 cardsAppeared = true
             }
+            syncPulse()
+        }
+        .onChange(of: controlActiveState) { _, _ in syncPulse() }
+    }
+
+    /// Runs the "live" pulse only while the app is active; stops it when the app
+    /// loses focus to avoid continuous off-focus redraws.
+    private func syncPulse() {
+        let active = controlActiveState != .inactive
+        if active && !pulsing {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                pulsing = true
+            }
+        } else if !active && pulsing {
+            withAnimation(.easeInOut(duration: 0.3)) { pulsing = false }
         }
     }
 

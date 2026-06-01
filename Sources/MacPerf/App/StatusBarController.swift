@@ -7,7 +7,14 @@ final class StatusBarController {
     private var panel: NSPanel
     private var eventMonitor: Any?
     private var cancellables = Set<AnyCancellable>()
-    private var updateTimer: AnyCancellable?
+
+    // Cached once. Recreating NSImage(systemSymbolName:) every tick re-parses the
+    // symbol's SVG and leaks CoreSVG allocations — the source of the runaway RAM
+    // growth. Cache the template images and the font so a refresh allocates nothing.
+    private let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+    private var symbolCache: [String: NSImage] = [:]
+    // The last rendered content key; identical ticks skip the redraw entirely.
+    private var lastRenderedKey: String?
 
     private let appState: AppState
     private let settingsManager: SettingsManager
@@ -49,12 +56,13 @@ final class StatusBarController {
         if let button = statusItem.button {
             button.action = #selector(togglePanel(_:))
             button.target = self
+            button.font = labelFont
         }
 
-        // Observe changes to update the label
-        appState.objectWillChange.sink { [weak self] _ in
-            DispatchQueue.main.async { self?.updateLabel() }
-        }.store(in: &cancellables)
+        // Refresh the label every tick via a direct hook. Unlike observing
+        // appState.objectWillChange, this keeps updating while the app is hidden
+        // (the SwiftUI fan-in is suppressed then) so the status item stays live.
+        appState.menuBarRefresh = { [weak self] in self?.updateLabel() }
 
         settingsManager.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateLabel() }
@@ -63,23 +71,44 @@ final class StatusBarController {
         updateLabel()
     }
 
+    /// Returns a cached template image for an SF Symbol, creating it once.
+    private func templateSymbol(_ name: String) -> NSImage? {
+        if let cached = symbolCache[name] { return cached }
+        guard let image = NSImage(systemSymbolName: name, accessibilityDescription: name) else { return nil }
+        image.isTemplate = true
+        symbolCache[name] = image
+        return image
+    }
+
     private func updateLabel() {
         guard let button = statusItem.button else { return }
 
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        button.font = font
+        let useText = settingsManager.useTextLabels
+        let metrics = settingsManager.sortedEnabledMetrics
 
-        if settingsManager.useTextLabels {
+        // Skip the entire rebuild (and the menu-bar redraw it triggers) when the
+        // content is unchanged from the last render — true for most ticks, since
+        // values are rounded. This avoids needless NSAttributedString churn.
+        let key: String
+        if useText {
+            key = "T|" + settingsManager.menuBarLabel(from: appState)
+        } else if metrics.isEmpty {
+            key = "E"
+        } else {
+            key = "I|" + metrics.map { "\($0.rawValue):\($0.formatValue(from: appState))" }.joined(separator: "|")
+        }
+        if key == lastRenderedKey { return }
+        lastRenderedKey = key
+
+        if useText {
             button.image = nil
             button.attributedTitle = NSAttributedString()
             button.title = settingsManager.menuBarLabel(from: appState)
             return
         }
 
-        let metrics = settingsManager.sortedEnabledMetrics
         guard !metrics.isEmpty else {
-            let image = NSImage(systemSymbolName: "gauge.medium", accessibilityDescription: nil)
-            image?.isTemplate = true
+            let image = templateSymbol("gauge.medium")
             image?.size = NSSize(width: 16, height: 16)
             button.image = image
             button.imagePosition = .imageLeading
@@ -94,10 +123,9 @@ final class StatusBarController {
         let composed = NSMutableAttributedString()
         for (i, metric) in metrics.enumerated() {
             if i > 0 {
-                composed.append(NSAttributedString(string: "  ", attributes: [.font: font]))
+                composed.append(NSAttributedString(string: "  ", attributes: [.font: labelFont]))
             }
-            if let symbol = NSImage(systemSymbolName: metric.systemImage, accessibilityDescription: metric.rawValue) {
-                symbol.isTemplate = true
+            if let symbol = templateSymbol(metric.systemImage) {
                 let attachment = NSTextAttachment()
                 attachment.image = symbol
                 attachment.bounds = NSRect(x: 0, y: -3, width: 14, height: 14)
@@ -105,7 +133,7 @@ final class StatusBarController {
             }
             composed.append(NSAttributedString(
                 string: " " + metric.formatValue(from: appState),
-                attributes: [.font: font]
+                attributes: [.font: labelFont]
             ))
         }
         button.attributedTitle = composed
@@ -122,6 +150,10 @@ final class StatusBarController {
     private func openPanel() {
         guard let button = statusItem.button,
               let buttonWindow = button.window else { return }
+
+        // Mark the panel open first; its didSet refreshes process data synchronously
+        // so the panel lays out with fresh process counts.
+        appState.isMenuPanelOpen = true
 
         // Size panel to fit its content
         panel.contentViewController?.view.needsLayout = true
@@ -144,6 +176,7 @@ final class StatusBarController {
     }
 
     private func closePanel() {
+        appState.isMenuPanelOpen = false
         panel.orderOut(nil)
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
