@@ -18,7 +18,7 @@ final class MemoryViewModel: ObservableObject {
     @Published var pressurePercent: Double = 0
     @Published var pressureLevel: MemoryMonitor.PressureLevel = .normal
 
-    func update() {
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         totalBytes = sample.totalBytes
         usedBytes = sample.usedBytes
@@ -31,6 +31,7 @@ final class MemoryViewModel: ObservableObject {
         pressurePercent = sample.pressurePercent
         pressureLevel = sample.pressureLevel
 
+        guard appendHistory else { return }
         let usagePercent = totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) * 100 : 0
         usageSeries.append(usagePercent)
         pressureSeries.append(sample.pressurePercent)

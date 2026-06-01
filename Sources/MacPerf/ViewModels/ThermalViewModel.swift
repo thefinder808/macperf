@@ -12,13 +12,14 @@ final class ThermalViewModel: ObservableObject {
     @Published var thermalState: ThermalMonitor.ThermalState = .nominal
     @Published var fanSpeeds: [ThermalMonitor.FanReading] = []
 
-    func update() {
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         cpuTemperature = sample.cpuTemperature
         gpuTemperature = sample.gpuTemperature
         thermalState = sample.thermalState
         fanSpeeds = sample.fanSpeeds
 
+        guard appendHistory else { return }
         cpuTempSeries.append(sample.cpuTemperature)
         gpuTempSeries.append(sample.gpuTemperature)
     }

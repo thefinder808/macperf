@@ -14,7 +14,7 @@ final class DiskViewModel: ObservableObject {
     @Published var totalBytesRead: UInt64 = 0
     @Published var totalBytesWritten: UInt64 = 0
 
-    func update() {
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         readBytesPerSec = sample.readBytesPerSec
         writeBytesPerSec = sample.writeBytesPerSec
@@ -23,6 +23,7 @@ final class DiskViewModel: ObservableObject {
         totalBytesRead = sample.totalBytesRead
         totalBytesWritten = sample.totalBytesWritten
 
+        guard appendHistory else { return }
         readSeries.append(sample.readBytesPerSec)
         writeSeries.append(sample.writeBytesPerSec)
     }

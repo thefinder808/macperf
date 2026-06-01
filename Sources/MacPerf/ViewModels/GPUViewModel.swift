@@ -12,7 +12,7 @@ final class GPUViewModel: ObservableObject {
     @Published var allocatedMemory: UInt64 = 0
     @Published var inUseMemory: UInt64 = 0
 
-    func update() {
+    func update(appendHistory: Bool = true) {
         let sample = monitor.sample()
         deviceUtilization = sample.deviceUtilization
         rendererUtilization = sample.rendererUtilization
@@ -20,6 +20,7 @@ final class GPUViewModel: ObservableObject {
         allocatedMemory = sample.allocatedMemory
         inUseMemory = sample.inUseMemory
 
+        guard appendHistory else { return }
         deviceUtilSeries.append(sample.deviceUtilization)
     }
 }
