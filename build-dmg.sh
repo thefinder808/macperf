@@ -4,7 +4,7 @@ set -euo pipefail
 # ─── Configuration ───────────────────────────────────────────────────────────
 APP_NAME="MacPerf"
 BUNDLE_ID="com.macperf.app"
-VERSION="1.0.2"
+VERSION="1.1.0"
 BUILD_DIR=".build/release"
 DIST_DIR="dist"
 APP_BUNDLE="${DIST_DIR}/${APP_NAME}.app"
