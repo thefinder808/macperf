@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: ThemeManager
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ZStack {
@@ -47,6 +48,11 @@ struct ContentView: View {
         .animation(.spring(response: 0.25, dampingFraction: 0.9), value: appState.showCommandPalette)
         .frame(minWidth: 900, minHeight: 550)
         .background(WindowAccessor())
+        .onAppear {
+            // The action outlives this view, so the menu-bar panel can reopen
+            // the dashboard after the last window is closed.
+            appState.openWindowAction = { openWindow(id: "main") }
+        }
         .onChange(of: appState.selectedCategory) {
             if appState.selectedCategory != nil {
                 appState.showSettings = false

@@ -17,7 +17,12 @@ deliberate and easy to regress.
   single master timer, and the navigation/UI state. It is the update orchestrator.
 - **Views** (`Sources/MacPerf/Views/`) — SwiftUI. Charts are `NeonChartView`
   (Swift Charts) observing a `TimeSeries` directly.
-- **`StatusBarController`** — the menu-bar `NSStatusItem` + dropdown `NSPanel`.
+- **`StatusBarController`** — the menu-bar `NSStatusItem` + dropdown `NSPanel`. The
+  panel's "Open MacPerf" button calls `AppState.showMainWindow()`, which focuses an
+  existing dashboard window (matched by its `main-` window identifier) or recreates
+  one through `openWindowAction` — an `openWindow(id: "main")` capture that
+  `ContentView` stores on `AppState`, since the panel's own environment has no
+  working `openWindow`.
 
 ## Update cycle
 
@@ -43,21 +48,30 @@ visible** is the core performance property. Invariants:
 2. **Visibility gating.** `AppState.isWindowVisible` is recomputed from
    `NSApp.isHidden`, `NSApp.occlusionState`, and window state (titled, on-screen,
    not minimized). It is false when the app is hidden (`Cmd-H`), minimized, fully
-   occluded, or its window is closed.
+   occluded, or its window is closed. The gate that actually drives the update path
+   is **`isUIVisible = isWindowVisible || isMenuPanelOpen`** — the menu-bar panel is
+   a *borderless* `NSPanel` that never counts as a visible window, but it renders
+   live metrics, so it must count as visible UI. (Gating on `isWindowVisible` alone
+   shipped in 1.1.0 and froze the pop-down whenever the dashboard was closed.)
 
-3. **Idle when not visible.** When `!isWindowVisible`, `update()` takes a lightweight
+3. **Idle when not visible.** When `!isUIVisible`, `update()` takes a lightweight
    branch: it refreshes only the menu-bar metric *scalars* (`update(appendHistory:
    false)` — skips `TimeSeries` appends so charts don't re-render) and calls
    `menuBarRefresh`. It also **suppresses the fan-in** so SwiftUI doesn't re-evaluate /
    re-draw the off-screen window. Result: ~0 % CPU and minimal RSS while backgrounded.
-   On becoming visible again, `recomputeWindowVisibility()` sends one `objectWillChange`
-   to refresh the now-visible UI.
+   On becoming visible again — `recomputeWindowVisibility()` or the panel opening
+   (`isMenuPanelOpen` didSet) — one `objectWillChange` refreshes the now-visible UI.
 
 4. **The status item stays live while hidden** via `AppState.menuBarRefresh`, a closure
    `StatusBarController` sets to `updateLabel()`. The menu bar updates through this hook
    every tick — *independent of the suppressed fan-in* — so hiding the app does not
    freeze the menu-bar numbers. (Do not route the menu bar back through
-   `appState.objectWillChange`, or it will go stale while hidden.)
+   `appState.objectWillChange`, or it will go stale while hidden.) The label dedup
+   **self-heals**: even when the rendered string is unchanged it is re-applied every
+   ~10 ticks, because AppKit can transiently drop a status button's content (space
+   switches, wake) and rounded values can stay identical for minutes — a pure dedup
+   left the item blank until a value happened to change. The re-apply reuses the
+   cached images, so it never re-parses symbols.
 
 5. **Process enumeration is gated** behind `needsProcessData` (Processes tab visible, or
    the menu panel / command palette open) — it's the heaviest sample and is invisible

@@ -15,6 +15,8 @@ final class StatusBarController {
     private var symbolCache: [String: NSImage] = [:]
     // The last rendered content key; identical ticks skip the redraw entirely.
     private var lastRenderedKey: String?
+    // Ticks since the label was last actually applied to the button.
+    private var ticksSinceRender = 0
 
     private let appState: AppState
     private let settingsManager: SettingsManager
@@ -63,6 +65,7 @@ final class StatusBarController {
         // appState.objectWillChange, this keeps updating while the app is hidden
         // (the SwiftUI fan-in is suppressed then) so the status item stays live.
         appState.menuBarRefresh = { [weak self] in self?.updateLabel() }
+        appState.closeMenuPanel = { [weak self] in self?.closePanel() }
 
         settingsManager.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateLabel() }
@@ -97,7 +100,17 @@ final class StatusBarController {
         } else {
             key = "I|" + metrics.map { "\($0.rawValue):\($0.formatValue(from: appState))" }.joined(separator: "|")
         }
-        if key == lastRenderedKey { return }
+        if key == lastRenderedKey {
+            ticksSinceRender += 1
+            // Re-apply even unchanged content periodically: AppKit can transiently
+            // drop a status button's content (space switches, wake, menu-bar
+            // re-materialize), and on an idle machine the rounded values can stay
+            // identical for minutes — without this the dedup would leave the item
+            // blank until a value happens to change. Images stay cached, so this
+            // never re-parses symbols (the CoreSVG leak the dedup exists to avoid).
+            guard ticksSinceRender >= 10 else { return }
+        }
+        ticksSinceRender = 0
         lastRenderedKey = key
 
         if useText {

@@ -90,6 +90,23 @@ struct MenuBarView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+
+            Divider()
+
+            Button {
+                appState.showMainWindow()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "macwindow")
+                        .font(.system(size: 11))
+                    Text("Open MacPerf")
+                        .font(.system(size: 12, weight: .medium))
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
         }
         .padding(12)
         .frame(width: 280)
