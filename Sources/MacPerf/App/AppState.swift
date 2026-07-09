@@ -35,8 +35,20 @@ final class AppState: ObservableObject {
     private(set) var isWindowVisible = true
     // Set by StatusBarController while the menu-bar panel is showing.
     var isMenuPanelOpen = false {
-        didSet { if isMenuPanelOpen { refreshProcessesIfNeeded() } }
+        didSet {
+            guard isMenuPanelOpen != oldValue else { return }
+            if isMenuPanelOpen {
+                // The fan-in was suppressed while hidden; repaint the panel's
+                // view tree immediately so it opens with current values.
+                objectWillChange.send()
+                refreshProcessesIfNeeded()
+            }
+        }
     }
+
+    // The panel is a borderless NSPanel, so it never counts as a visible window —
+    // but it renders live metrics and must keep the full update path running.
+    var isUIVisible: Bool { isWindowVisible || isMenuPanelOpen }
 
     // Process enumeration walks every running process (the heaviest sample), so
     // only run it when something actually displays process data.
@@ -68,6 +80,27 @@ final class AppState: ObservableObject {
     // fan-in (which is suppressed while hidden). Set by StatusBarController so the
     // status item keeps updating even when the window isn't visible.
     var menuBarRefresh: (() -> Void)?
+
+    // Set by StatusBarController; dismisses the menu-bar panel. (The panel's
+    // outside-click monitor only sees other apps' events, so opening our own
+    // window from the panel must close it explicitly.)
+    var closeMenuPanel: (() -> Void)?
+
+    // Set by ContentView from @Environment(\.openWindow); creates a new main
+    // window via the WindowGroup when every dashboard window has been closed.
+    var openWindowAction: (() -> Void)?
+
+    /// Brings the dashboard to the front, recreating its window if it was closed.
+    func showMainWindow() {
+        closeMenuPanel?()
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
+            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openWindowAction?()
+        }
+    }
 
     // Convenience accessors for sidebar/overview
     var cpuUsage: Double { cpuVM.overallUsage }
@@ -128,7 +161,7 @@ final class AppState: ObservableObject {
             (vm.objectWillChange as? ObservableObjectPublisher)?.sink { [weak self] _ in
                 // Suppress while a menu is tracking, or while hidden (nothing on-screen
                 // to update — the menu bar refreshes via menuBarRefresh instead).
-                guard let self, !self.isMenuTracking, self.isWindowVisible else { return }
+                guard let self, !self.isMenuTracking, self.isUIVisible else { return }
                 self.objectWillChange.send()
             }.store(in: &vmSubscriptions)
         }
@@ -182,10 +215,10 @@ final class AppState: ObservableObject {
     private func update() {
         tick += 1
 
-        // Hidden / minimized / occluded: keep the menu bar's metrics fresh but skip
-        // chart history and the SwiftUI fan-in so nothing re-renders off-screen.
-        // (The status item stays visible and live even when the app is hidden.)
-        guard isWindowVisible else {
+        // Hidden / minimized / occluded (and menu panel closed): keep the menu bar's
+        // metrics fresh but skip chart history and the SwiftUI fan-in so nothing
+        // re-renders off-screen. (The status item stays visible and live regardless.)
+        guard isUIVisible else {
             cpuVM.update(appendHistory: false)
             memoryVM.update(appendHistory: false)
             diskVM.update(appendHistory: false)

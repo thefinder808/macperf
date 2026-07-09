@@ -22,7 +22,7 @@ struct MacPerfApp: App {
     @State private var statusBarController: StatusBarController?
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(themeManager)
