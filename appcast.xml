@@ -3,8 +3,19 @@
     <channel>
         <title>MacPerf</title>
         <item>
+            <title>1.2.1</title>
+            <pubDate>Thu, 09 Jul 2026 19:31:46 -0500</pubDate>
+            <sparkle:version>1.2.1</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://thefinder808.github.io/macperf/releases/MacPerf-1.2.1.dmg" length="3197340" type="application/octet-stream" sparkle:edSignature="+d8yacfayZXFrFNRluU2khtCT6WE/JyNc+h5pNAH/zHGzwViKST7xFW7FK9xMiT1yUJT5Lra2aO0uv7CIc4ADg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://thefinder808.github.io/macperf/releases/MacPerf1.2.1-1.2.0.delta" sparkle:deltaFrom="1.2.0" length="536070" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="a1oOGVqzq4D0YyuJ3/lQOi/Q0jOY/ZGFyUitvaDUfoN4XslJgYzm89FI31jkgHfwMhHC0qv6Fs8eaO7r9WY8Cw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.0</title>
-            <pubDate>Thu, 09 Jul 2026 19:10:29 -0500</pubDate>
+            <pubDate>Thu, 09 Jul 2026 19:31:46 -0500</pubDate>
             <sparkle:version>1.2.0</sparkle:version>
             <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
