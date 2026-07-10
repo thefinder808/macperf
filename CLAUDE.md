@@ -3,9 +3,13 @@
 ## Release runbook
 
 1. Bump `VERSION` in `build-dmg.sh` and `build-pkg.sh` (via PR — never push main directly).
-2. `MACPERF_NOTARY_PROFILE=traceview-notary ./build-dmg.sh` — builds, signs
-   **inside-out** (never `codesign --deep`; it breaks Sparkle's nested XPC
-   services), notarizes + staples the DMG, and generates `dist/appcast/appcast.xml`.
+2. `MACPERF_NOTARY_PROFILE=traceview-notary ./build-dmg.sh` — builds a
+   **universal** binary (arm64 + x86_64; the product lands in
+   `.build/apple/Products/Release`, not `.build/release`), signs **inside-out**
+   (never `codesign --deep`; it breaks Sparkle's nested XPC services),
+   notarizes + staples the DMG, and generates `dist/appcast/appcast.xml`.
+   Intel is smoke-tested under Rosetta only — no Intel hardware in the fleet;
+   ThermalMonitor degrades gracefully if its Intel SMC keys misread.
 3. `gh release create v<X.Y.Z> dist/MacPerf-<X.Y.Z>.dmg --title "MacPerf v<X.Y.Z>" --notes '…'`
 4. `./build-dmg.sh publish-appcast` — pushes `appcast.xml` + DMG to `gh-pages`.
    **This step is what delivers the update to installed apps** (Sparkle feed:
