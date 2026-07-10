@@ -68,6 +68,8 @@ Real-time graphs and metrics for CPU, memory, disk, network, GPU, and thermals �
 
 Download the latest signed and notarized `.dmg` from the [Releases page](https://github.com/thefinder808/macperf/releases/latest), open it, and drag **MacPerf** into your Applications folder.
 
+That's the only manual download you'll ever need — from v1.2.0 on, MacPerf keeps itself up to date automatically (**MacPerf → Check for Updates…** to check on demand; updates are signed and verified end-to-end).
+
 ## Build from source
 
 ```bash
