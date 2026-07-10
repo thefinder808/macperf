@@ -5,7 +5,10 @@ set -euo pipefail
 APP_NAME="MacPerf"
 BUNDLE_ID="com.macperf.app"
 VERSION="1.2.0"
-BUILD_DIR=".build/release"
+# Universal (arm64 + x86_64) builds land under .build/apple/Products/Release —
+# NOT .build/release (that symlink stays single-arch). The README promises
+# Intel support and ThermalMonitor carries Intel SMC fallbacks, so ship both.
+BUILD_DIR=".build/apple/Products/Release"
 DIST_DIR="dist"
 APP_BUNDLE="${DIST_DIR}/${APP_NAME}.app"
 DMG_PATH="${DIST_DIR}/${APP_NAME}-${VERSION}.dmg"
@@ -197,8 +200,10 @@ fi
 # ─── Build ───────────────────────────────────────────────────────────────────
 echo "=== Building ${APP_NAME} v${VERSION} disk image ==="
 
-echo "Building release binary..."
-swift build -c release
+echo "Building universal release binary (arm64 + x86_64)..."
+swift build -c release --arch arm64 --arch x86_64
+lipo -archs "${BUILD_DIR}/${APP_NAME}" | grep -q "x86_64 arm64" \
+    || { echo "✗ binary is not universal: $(lipo -archs "${BUILD_DIR}/${APP_NAME}")"; exit 1; }
 
 # ─── App Bundle ──────────────────────────────────────────────────────────────
 echo "Creating app bundle..."
