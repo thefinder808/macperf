@@ -19,6 +19,7 @@ struct MacPerfApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var settingsManager = SettingsManager()
+    @StateObject private var updater = UpdaterService()
     @State private var statusBarController: StatusBarController?
 
     var body: some Scene {
@@ -27,6 +28,7 @@ struct MacPerfApp: App {
                 .environmentObject(appState)
                 .environmentObject(themeManager)
                 .environmentObject(settingsManager)
+                .environmentObject(updater)
                 .background(themeManager.current.windowBackground)
                 .preferredColorScheme(colorScheme)
                 .sheet(isPresented: $appState.showExport) {
@@ -48,6 +50,16 @@ struct MacPerfApp: App {
         .defaultSize(width: 1100, height: 700)
         .windowResizability(.contentMinSize)
         .commands {
+            // App menu, right under "About MacPerf" (macOS convention).
+            // Sparkle owns the user-facing flow; canCheckForUpdates gates
+            // the item while a check is in flight.
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+            }
+
             // Navigation menu
             CommandMenu("Navigate") {
                 Button("Overview") { appState.selectedCategory = .overview }
@@ -110,6 +122,7 @@ struct MacPerfApp: App {
                 .environmentObject(settingsManager)
                 .environmentObject(appState)
                 .environmentObject(themeManager)
+                .environmentObject(updater)
         }
     }
 
