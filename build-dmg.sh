@@ -4,7 +4,7 @@ set -euo pipefail
 # ─── Configuration ───────────────────────────────────────────────────────────
 APP_NAME="MacPerf"
 BUNDLE_ID="com.macperf.app"
-VERSION="1.2.0"
+VERSION="1.2.1"
 # Universal (arm64 + x86_64) builds land under .build/apple/Products/Release —
 # NOT .build/release (that symlink stays single-arch). The README promises
 # Intel support and ThermalMonitor carries Intel SMC fallbacks, so ship both.
