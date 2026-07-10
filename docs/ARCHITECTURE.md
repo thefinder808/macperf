@@ -81,6 +81,25 @@ visible** is the core performance property. Invariants:
    while the app is the active app (`controlActiveState`), and charts opt out of
    Swift Charts' per-redraw accessibility-data generation (`.accessibilityHidden(true)`).
 
+## Auto-update (Sparkle)
+
+`UpdaterService` (`Sources/MacPerf/Services/`) wraps Sparkle 2's
+`SPUStandardUpdaterController` — ported from macpad/TraceView, including the
+macOS App Management TCC alert (Sparkle error 4012 means "grant permission in
+System Settings", not "update failed"). The appcast feed and signed DMGs live
+on the public **gh-pages** branch (`https://thefinder808.github.io/macperf/appcast.xml`);
+updates are EdDSA-signed with the shared fleet Sparkle key (private key in the
+login Keychain).
+
+Build integration (`build-dmg.sh`): `embed_sparkle()` copies the framework from
+the SPM artifact cache into `Contents/Frameworks/` (the binary finds it via an
+`@rpath` linker flag in `Package.swift`); signing is **inside-out** (each Sparkle
+XPC service, then the framework, then the app — never `codesign --deep`, which
+breaks Sparkle's nested services; `Downloader.xpc` keeps its network-client
+entitlement via `--preserve-metadata=entitlements`). After notarization the
+script runs `generate_appcast`, and `./build-dmg.sh publish-appcast` pushes
+`appcast.xml` + DMGs to gh-pages.
+
 ## Data retention
 
 `TimeSeries` is a ring buffer capped at 3600 points (1 h at 1 s). Per-process CPU

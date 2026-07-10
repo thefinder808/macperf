@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var updater: UpdaterService
 
     var body: some View {
         let theme = themeManager.current
@@ -103,6 +104,58 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundStyle(theme.secondaryText)
                             .padding(.leading, 28)
+                    }
+                }
+
+                // Software updates section
+                settingsSection(title: "Software Updates", icon: "arrow.triangle.2.circlepath") {
+                    // Sparkle's automaticallyChecksForUpdates is a plain get/set
+                    // on the updater controller (not @Published), so wrap it in
+                    // a manual Binding.
+                    let autoCheck = Binding(
+                        get: { updater.automaticallyChecksForUpdates },
+                        set: { updater.automaticallyChecksForUpdates = $0 }
+                    )
+                    let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 0) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.secondaryText)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Automatically check for updates")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.primaryText)
+
+                            Spacer()
+
+                            Toggle("", isOn: autoCheck)
+                                .toggleStyle(.switch)
+                                .tint(theme.accent(for: .overview))
+                                .labelsHidden()
+                        }
+                        .padding(.vertical, 4)
+
+                        Divider()
+
+                        HStack(spacing: 0) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.secondaryText)
+                                .frame(width: 28, alignment: .center)
+
+                            Text("Current version: \(version)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(theme.primaryText)
+
+                            Spacer()
+
+                            Button("Check Now") { updater.checkForUpdates() }
+                                .disabled(!updater.canCheckForUpdates)
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
 
